@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% block title %}Edit Employee — FaceTrack AI{% endblock %}
+
+{% block body %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="flash-container">
+    {% for category, message in messages %}
+    <div class="flash-msg {{ category }}">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<div class="admin-layout">
+    {% include 'partials/sidebar.html' %}
+    <div class="main-content">
+        <div class="topbar">
+            <div>
+                <div class="topbar-title">Edit Employee</div>
+                <div style="font-size:0.85rem;color:var(--text-muted);margin-top:2px;">{{ employee.name }} — {{
+                    employee.employee_id }}</div>
+            </div>
+            <a href="{{ url_for('manage_employees') }}" class="btn btn-outline btn-sm">
+                <i data-lucide="corner-up-left" style="width:16px;height:16px;"></i> Back
+            </a>
+        </div>
+        <div class="page-content">
+            <div style="max-width:720px;margin:0 auto;">
+                <div class="card animate-in">
+                    <div class="card-header">
+                        <div class="card-title" style="display:flex;align-items:center;gap:8px;">
+                            <i data-lucide="user" style="width:18px;height:18px;color:var(--primary);"></i> Edit Details
+                        </div>
+                        <code
+                            style="color:var(--primary);background:#CCFBF1;padding:4px 10px;border-radius:6px;font-size:0.85rem;font-weight:600;">
+                            {{ employee.employee_id }}
+                        </code>
+                    </div>
+                    <form method="POST">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label">Full Name <span style="color:var(--danger);">*</span></label>
+                                <input type="text" name="name" class="form-control" value="{{ employee.name }}"
+                                    required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Department <span style="color:var(--danger);">*</span></label>
+                                <select name="department" class="form-control" required>
+                                    {% set depts = ['Engineering', 'Human Resources', 'Finance', 'Marketing',
+                                    'Sales', 'Operations', 'IT', 'Administration', 'Research & Development', 'Other'] %}
+                                    {% for dept in depts %}
+                                    <option value="{{ dept }}" {{ 'selected' if employee.department==dept }}>{{ dept }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Position / Role</label>
+                                <input type="text" name="position" class="form-control"
+                                    value="{{ employee.position or '' }}">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Email Address</label>
+                                <input type="email" name="email" class="form-control"
+                                    value="{{ employee.email or '' }}">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Phone Number</label>
+                                <input type="tel" name="phone" class="form-control" value="{{ employee.phone or '' }}">
+                            </div>
+                        </div>
+                        <div class="d-flex gap-12 mt-3 flex-wrap">
+                            <button type="submit" class="btn btn-primary" style="flex:1;justify-content:center;">
+                                <i data-lucide="save" style="width:18px;height:18px;"></i> Save Changes
+                            </button>
+                            <a href="{{ url_for('capture_face_route', employee_id=employee.employee_id) }}"
+                                class="btn btn-outline" style="flex:1;justify-content:center;">
+                                <i data-lucide="camera" style="width:18px;height:18px;"></i> Re-capture Face
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        if (window.lucide) lucide.createIcons();
+    });
+</script>
+{% endblock %}

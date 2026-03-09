@@ -1,0 +1,3 @@
+id,employee_id,name,date,login_time,logout_time,working_hours,status,late_arrival
+2,3,Washim Shaikh,2026-03-07,00:23:07,00:23:20,0.0,Present,0
+1,1,Washim Shaikh,2026-03-07,00:18:53,00:19:36,0.01,Present,0

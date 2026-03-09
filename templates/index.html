@@ -1,0 +1,479 @@
+{% extends 'base.html' %}
+{% block title %}Attendance Terminal — FaceTrack AI{% endblock %}
+
+{% block body %}
+<div class="terminal-page">
+    <!-- LEFT: Camera Panel -->
+    <div class="terminal-left">
+        <!-- Header -->
+        <div
+            style="position:absolute;top:0;left:0;right:0;padding:24px 32px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);">
+            <div style="display:flex;align-items:center;gap:12px;">
+                <div
+                    style="width:40px;height:40px;background:var(--primary);border-radius:10px;display:flex;align-items:center;justify-content:center;color:white;box-shadow:var(--shadow-sm);">
+                    <i data-lucide="scan-face"></i>
+                </div>
+                <div>
+                    <div class="font-outfit"
+                        style="font-weight:700;font-size:1.1rem;color:var(--text-primary);letter-spacing:-0.01em;">
+                        FaceTrack AI</div>
+                    <div
+                        style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px;">
+                        Terminal</div>
+                </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:16px;">
+                <div style="text-align:right;">
+                    <div id="clock"
+                        style="font-size:1.1rem;font-weight:700;color:var(--text-primary);letter-spacing:-0.01em;">
+                    </div>
+                    <div id="dateDisplay" style="font-size:0.8rem;color:var(--text-muted);"></div>
+                </div>
+                <a href="/about-contact" class="btn btn-outline btn-sm">
+                    <i data-lucide="user" style="width:14px;height:14px;"></i> About
+                </a>
+                <a href="/about-contact#contact" class="btn btn-outline btn-sm">
+                    <i data-lucide="mail" style="width:14px;height:14px;"></i> Contact
+                </a>
+                <a href="{{ url_for('admin_login') }}" class="btn btn-outline btn-sm">
+                    <i data-lucide="settings" style="width:14px;height:14px;"></i> Admin
+                </a>
+            </div>
+        </div>
+
+        <!-- Camera Area -->
+        <div style="display:flex;flex-direction:column;align-items:center;gap:24px;padding-top:80px;width:100%;">
+            <!-- Mode Tabs -->
+            <div
+                style="display:flex;background:#F3F4F6;border-radius:12px;padding:4px;gap:4px;box-shadow:inset 0 1px 3px rgba(0,0,0,0.05);">
+                <button id="tabLogin" onclick="setMode('login')"
+                    style="padding:10px 32px;border-radius:9px;border:none;font-size:0.9rem;font-weight:600;cursor:pointer;transition:all 0.2s;background:var(--primary);color:white;display:flex;align-items:center;gap:6px;box-shadow:var(--shadow-sm);">
+                    <i data-lucide="log-in" style="width:16px;height:16px;"></i> Check In
+                </button>
+                <button id="tabLogout" onclick="setMode('logout')"
+                    style="padding:10px 32px;border-radius:9px;border:none;font-size:0.9rem;font-weight:600;cursor:pointer;transition:all 0.2s;background:transparent;color:var(--text-secondary);display:flex;align-items:center;gap:6px;">
+                    <i data-lucide="log-out" style="width:16px;height:16px;"></i> Check Out
+                </button>
+            </div>
+
+            <!-- Camera -->
+            <div class="camera-container">
+                <video id="videoFeed" autoplay muted playsinline></video>
+                <canvas id="canvasOverlay"></canvas>
+                <div class="camera-corner tl"></div>
+                <div class="camera-corner tr"></div>
+                <div class="camera-corner bl"></div>
+                <div class="camera-corner br"></div>
+                <div class="scan-line" id="scanLine"></div>
+
+                <!-- Mode badge -->
+                <div style="position:absolute;top:16px;right:16px;z-index:20;" id="modeBadge">
+                    <span class="badge badge-success"><i data-lucide="log-in" style="width:14px;height:14px;"></i>
+                        CHECK-IN MODE</span>
+                </div>
+
+                <div class="recognition-status idle" id="recogStatus">
+                    Camera feed will appear here
+                </div>
+            </div>
+
+            <!-- Action Button -->
+            <button id="btnRecognize" onclick="recognizeFace()" class="btn btn-primary btn-lg"
+                style="width:100%;max-width:500px;justify-content:center;font-size:1rem;padding:16px;box-shadow:var(--shadow-md);"
+                disabled>
+                <i data-lucide="camera" style="width:20px;height:20px;"></i> Start Camera First
+            </button>
+
+            <button id="btnStartCamera" onclick="startTerminalCamera()" class="btn btn-outline"
+                style="max-width:500px;width:100%;justify-content:center;">
+                <i data-lucide="video" style="width:18px;height:18px;"></i> Access Camera
+            </button>
+        </div>
+    </div>
+
+    <!-- RIGHT: Activity Feed -->
+    <div class="terminal-right">
+        <div style="margin-bottom:24px;">
+            <h2 style="font-size:1.25rem;margin-bottom:4px;display:flex;align-items:center;gap:8px;">
+                <i data-lucide="activity"></i> Today's Activity
+            </h2>
+            <p style="font-size:0.85rem;color:var(--text-muted);">Real-time recognition log</p>
+        </div>
+
+        <!-- Recognition Result Panel -->
+        <div id="resultPanel"
+            style="display:none;padding:20px;border-radius:14px;margin-bottom:24px;border:1px solid;transition:all 0.3s;box-shadow:var(--shadow-sm);background:#FFFFFF;">
+            <div style="display:flex;align-items:center;gap:16px;">
+                <div id="resultAvatar"
+                    style="width:56px;height:56px;border-radius:50%;background:var(--primary);color:white;display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:700;flex-shrink:0;">
+                </div>
+                <div>
+                    <div id="resultName"
+                        style="font-size:1.15rem;font-weight:700;color:var(--text-primary);letter-spacing:-0.01em;">
+                    </div>
+                    <div id="resultId" style="font-size:0.85rem;color:var(--text-muted);"></div>
+                    <div id="resultMsg" style="font-size:0.9rem;margin-top:6px;font-weight:500;"></div>
+                </div>
+            </div>
+            <div
+                style="display:flex;gap:16px;margin-top:16px;font-size:0.8rem;color:var(--text-secondary);align-items:center;">
+                <span id="resultTime" style="display:flex;align-items:center;gap:4px;"><i data-lucide="clock"
+                        style="width:14px;height:14px;"></i></span>
+                <span id="resultConf" style="display:flex;align-items:center;gap:4px;"></span>
+            </div>
+        </div>
+
+        <!-- Live Stats Bar -->
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:24px;">
+            <div
+                style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:12px;padding:16px;text-align:center;box-shadow:var(--shadow-sm);">
+                <div style="font-size:1.6rem;font-weight:700;color:#16A34A;line-height:1;" id="loginCount">0</div>
+                <div
+                    style="font-size:0.75rem;color:#15803D;text-transform:uppercase;letter-spacing:0.5px;margin-top:6px;font-weight:600;">
+                    Check-Ins</div>
+            </div>
+            <div
+                style="background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;padding:16px;text-align:center;box-shadow:var(--shadow-sm);">
+                <div style="font-size:1.6rem;font-weight:700;color:#DC2626;line-height:1;" id="logoutCount">0</div>
+                <div
+                    style="font-size:0.75rem;color:#B91C1C;text-transform:uppercase;letter-spacing:0.5px;margin-top:6px;font-weight:600;">
+                    Check-Outs</div>
+            </div>
+        </div>
+
+        <!-- Activity Feed -->
+        <div style="display:flex;flex-direction:column;gap:12px;overflow-y:auto;flex:1;padding-right:8px;"
+            id="activityFeed">
+            <div
+                style="text-align:center;color:var(--text-muted);font-size:0.9rem;padding:40px 0;background:#F9FAFB;border-radius:12px;border:1px dashed var(--border);">
+                <div style="display:flex;justify-content:center;margin-bottom:12px;opacity:0.5;">
+                    <i data-lucide="history" style="width:32px;height:32px;"></i>
+                </div>
+                No activity yet today
+            </div>
+        </div>
+    </div>
+
+    <!-- Flash container -->
+    <div class="flash-container"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let currentMode = 'login';
+    let webcam = null;
+    let isProcessing = false;
+    let loginCount = 0;
+    let logoutCount = 0;
+
+    // Clock
+    function updateClock() {
+        const now = new Date();
+        const t = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+        const d = now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        document.getElementById('clock').textContent = t;
+        document.getElementById('dateDisplay').textContent = d;
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    function setMode(mode) {
+        currentMode = mode;
+        const tabLogin = document.getElementById('tabLogin');
+        const tabLogout = document.getElementById('tabLogout');
+        const modeBadge = document.getElementById('modeBadge');
+        const btnRec = document.getElementById('btnRecognize');
+
+        if (mode === 'login') {
+            tabLogin.style.background = 'var(--primary)';
+            tabLogin.style.color = 'white';
+            tabLogin.style.boxShadow = 'var(--shadow-sm)';
+            tabLogout.style.background = 'transparent';
+            tabLogout.style.color = 'var(--text-secondary)';
+            tabLogout.style.boxShadow = 'none';
+            modeBadge.innerHTML = '<span class="badge badge-success"><i data-lucide="log-in" style="width:14px;height:14px;"></i> CHECK-IN MODE</span>';
+            if (webcam && webcam.isRunning) btnRec.innerHTML = '<i data-lucide="scan-face" style="width:20px;height:20px;"></i> Scan Face to Check In';
+        } else {
+            tabLogout.style.background = 'var(--danger)';
+            tabLogout.style.color = 'white';
+            tabLogout.style.boxShadow = 'var(--shadow-sm)';
+            tabLogin.style.background = 'transparent';
+            tabLogin.style.color = 'var(--text-secondary)';
+            tabLogin.style.boxShadow = 'none';
+            modeBadge.innerHTML = '<span class="badge badge-danger"><i data-lucide="log-out" style="width:14px;height:14px;"></i> CHECK-OUT MODE</span>';
+            if (webcam && webcam.isRunning) btnRec.innerHTML = '<i data-lucide="scan-face" style="width:20px;height:20px;"></i> Scan Face to Check Out';
+        }
+        if (window.lucide) lucide.createIcons();
+    }
+
+    async function startTerminalCamera() {
+        const video = document.getElementById('videoFeed');
+        const canvas = document.getElementById('canvasOverlay');
+        webcam = new WebcamManager(video, canvas);
+
+        const recogStatus = document.getElementById('recogStatus');
+        recogStatus.innerHTML = '<i data-lucide="loader-2" class="lucide-spin" style="width:16px;height:16px;"></i> Starting camera...';
+        recogStatus.className = 'recognition-status scanning';
+
+        const ok = await webcam.start();
+        if (window.lucide) lucide.createIcons();
+
+        if (ok) {
+            document.getElementById('btnStartCamera').style.display = 'none';
+            const btn = document.getElementById('btnRecognize');
+            btn.disabled = false;
+            btn.innerHTML = currentMode === 'login' ? '<i data-lucide="scan-face" style="width:20px;height:20px;"></i> Scan Face to Check In' : '<i data-lucide="scan-face" style="width:20px;height:20px;"></i> Scan Face to Check Out';
+            recogStatus.textContent = 'Waiting for input — align face and scan';
+            recogStatus.className = 'recognition-status idle';
+        } else {
+            recogStatus.textContent = 'Camera access denied or unavailable';
+            recogStatus.className = 'recognition-status error';
+            showNotification('Camera access denied. Please allow camera permissions.', 'danger');
+        }
+        if (window.lucide) lucide.createIcons();
+    }
+
+    async function recognizeFace() {
+        if (isProcessing || !webcam || !webcam.isRunning) return;
+
+        isProcessing = true;
+        const btn = document.getElementById('btnRecognize');
+        const recogStatus = document.getElementById('recogStatus');
+
+        btn.disabled = true;
+        btn.innerHTML = '<i data-lucide="loader-2" class="lucide-spin" style="width:20px;height:20px;"></i> Processing...';
+        recogStatus.innerHTML = '<i data-lucide="scan" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;"></i> Analyzing face...';
+        recogStatus.className = 'recognition-status scanning';
+        if (window.lucide) lucide.createIcons();
+
+        // Let UI update
+        await new Promise(r => setTimeout(r, 100));
+
+        const frame = webcam.captureFrame(0.9);
+        if (!frame) {
+            recogStatus.textContent = 'Failed to capture frame';
+            recogStatus.className = 'recognition-status error';
+            resetBtn();
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/recognize-face', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ frame, action: currentMode })
+            });
+            const data = await res.json();
+            handleResult(data);
+        } catch (err) {
+            recogStatus.textContent = 'Server connection error';
+            recogStatus.className = 'recognition-status error';
+            showNotification('Server error. Is the Flask app running?', 'danger');
+        }
+
+        resetBtn();
+    }
+
+    function handleResult(data) {
+        const recogStatus = document.getElementById('recogStatus');
+
+        if (data.success) {
+            // Success: mark attendance
+            recogStatus.innerHTML = currentMode === 'login'
+                ? `<i data-lucide="check-circle" style="width:16px;height:16px;vertical-align:middle;"></i> ${data.name} checked in successfully`
+                : `<i data-lucide="check-circle" style="width:16px;height:16px;vertical-align:middle;"></i> ${data.name} checked out successfully`;
+            recogStatus.className = 'recognition-status success';
+
+            showResultPanel(data, true);
+            addActivityItem(data, currentMode, true);
+
+            if (currentMode === 'login') loginCount++;
+            else logoutCount++;
+            updateCounts();
+
+            showNotification(`${data.name} — ${currentMode} recorded at ${data.time}`, 'success');
+            playSuccessSound();
+        } else {
+            // Fail
+            recogStatus.innerHTML = `<i data-lucide="alert-circle" style="width:16px;height:16px;vertical-align:middle;"></i> ${data.message}`;
+            recogStatus.className = 'recognition-status error';
+
+            if (data.name && data.name !== 'Unknown') {
+                showResultPanel(data, false);
+            }
+
+            showNotification(data.message, 'danger');
+        }
+        if (window.lucide) lucide.createIcons();
+    }
+
+    function showResultPanel(data, success) {
+        const panel = document.getElementById('resultPanel');
+        const resultAvatar = document.getElementById('resultAvatar');
+        const resultName = document.getElementById('resultName');
+        const resultId = document.getElementById('resultId');
+        const resultMsg = document.getElementById('resultMsg');
+        const resultTime = document.getElementById('resultTime');
+        const resultConf = document.getElementById('resultConf');
+
+        panel.style.display = 'block';
+
+        if (success) {
+            panel.style.background = '#ECFDF5';
+            panel.style.borderColor = '#A7F3D0';
+            resultAvatar.style.background = 'var(--primary)';
+            resultAvatar.textContent = data.name ? data.name[0].toUpperCase() : '?';
+            resultName.textContent = data.name;
+            resultId.textContent = 'ID: ' + data.employee_id;
+            resultMsg.innerHTML = `<span style="color:#059669;display:flex;align-items:center;gap:4px;"><i data-lucide="check-circle" style="width:16px;height:16px;"></i> ${currentMode === 'login' ? 'Check-In Recorded' : 'Check-Out Recorded'}</span>`;
+            resultTime.innerHTML = `<i data-lucide="clock" style="width:14px;height:14px;"></i> ${data.time || new Date().toLocaleTimeString()}`;
+            resultConf.innerHTML = data.confidence ? `<i data-lucide="target" style="width:14px;height:14px;"></i> ${data.confidence}% match` : '';
+        } else {
+            panel.style.background = '#FEF2F2';
+            panel.style.borderColor = '#FECACA';
+            resultAvatar.style.background = 'var(--danger)';
+            resultAvatar.textContent = data.name ? data.name[0].toUpperCase() : '?';
+            resultName.textContent = data.name || 'Unknown';
+            resultId.textContent = data.employee_id || '';
+            resultMsg.innerHTML = `<span style="color:#DC2626;display:flex;align-items:center;gap:4px;"><i data-lucide="alert-triangle" style="width:16px;height:16px;"></i> ${data.message}</span>`;
+            resultTime.innerHTML = `<i data-lucide="clock" style="width:14px;height:14px;"></i> ${new Date().toLocaleTimeString()}`;
+            resultConf.innerHTML = '';
+        }
+    }
+
+    function addActivityItem(data, mode, success) {
+        const feed = document.getElementById('activityFeed');
+
+        // Remove empty state
+        if (feed.querySelector('div[style*="text-align:center"]')) feed.innerHTML = '';
+
+        const item = document.createElement('div');
+        item.style.cssText = `
+            display:flex;align-items:center;gap:12px;
+            padding:14px;border-radius:10px;
+            background:${success ? '#FFFFFF' : '#FEF2F2'};
+            border:1px solid ${success ? 'var(--border)' : '#FECACA'};
+            box-shadow:var(--shadow-sm);
+            animation:fadeIn 0.3s ease-out;
+        `;
+
+        const avatar = document.createElement('div');
+        avatar.style.cssText = `
+            width:38px;height:38px;border-radius:50%;flex-shrink:0;
+            background:${mode === 'login' ? 'var(--primary)' : 'var(--danger)'};
+            display:flex;align-items:center;justify-content:center;
+            font-weight:600;font-size:0.9rem;color:white;
+        `;
+        avatar.textContent = data.name ? data.name[0].toUpperCase() : '?';
+
+        const info = document.createElement('div');
+        info.style.flex = '1';
+
+        let modeStr = mode === 'login' ? '<span style="color:#16A34A;display:inline-flex;align-items:center;gap:4px;"><i data-lucide="log-in" style="width:12px;height:12px;"></i> Check-In</span>' : '<span style="color:#DC2626;display:inline-flex;align-items:center;gap:4px;"><i data-lucide="log-out" style="width:12px;height:12px;"></i> Check-Out</span>';
+
+        info.innerHTML = `
+            <div style="font-size:0.95rem;font-weight:600;color:var(--text-primary);">${data.name}</div>
+            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;display:flex;align-items:center;gap:6px;">
+                ${modeStr} &bull; ${data.time || new Date().toLocaleTimeString()}
+            </div>
+        `;
+
+        item.appendChild(avatar);
+        item.appendChild(info);
+        feed.insertBefore(item, feed.firstChild);
+    }
+
+    function updateCounts() {
+        document.getElementById('loginCount').textContent = loginCount;
+        document.getElementById('logoutCount').textContent = logoutCount;
+    }
+
+    function resetBtn() {
+        isProcessing = false;
+        const btn = document.getElementById('btnRecognize');
+        btn.disabled = false;
+        btn.innerHTML = currentMode === 'login' ? '<i data-lucide="scan-face" style="width:20px;height:20px;"></i> Scan Face to Check In' : '<i data-lucide="scan-face" style="width:20px;height:20px;"></i> Scan Face to Check Out';
+        if (window.lucide) lucide.createIcons();
+    }
+
+    function playSuccessSound() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = 880;
+            gain.gain.setValueAtTime(0.2, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.4);
+        } catch (e) { /* silent */ }
+    }
+
+    // Keyboard shortcut: Space to scan
+    document.addEventListener('keydown', e => {
+        if (e.code === 'Space' && webcam && webcam.isRunning && !isProcessing) {
+            e.preventDefault();
+            recognizeFace();
+        }
+        if (e.code === 'KeyL') setMode('login');
+        if (e.code === 'KeyO') setMode('logout');
+    });
+
+    // Auto-start camera on page load
+    window.addEventListener('load', () => {
+        startTerminalCamera();
+    });
+
+    // Load today's attendance count
+    async function loadTodayStats() {
+        try {
+            const res = await fetch('/api/today-attendance');
+            const data = await res.json();
+            loginCount = data.filter(r => r.login_time).length;
+            logoutCount = data.filter(r => r.logout_time).length;
+            updateCounts();
+
+            const feed = document.getElementById('activityFeed');
+            if (data.length > 0) {
+                feed.innerHTML = '';
+                data.slice().reverse().forEach(rec => {
+                    const item = document.createElement('div');
+                    item.style.cssText = `
+                        display:flex;align-items:center;gap:12px;padding:14px;border-radius:10px;
+                        background:#FFFFFF;border:1px solid var(--border);box-shadow:var(--shadow-sm);
+                    `;
+                    const avatar = document.createElement('div');
+                    avatar.style.cssText = `
+                        width:38px;height:38px;border-radius:50%;flex-shrink:0;
+                        background:var(--primary);display:flex;align-items:center;
+                        justify-content:center;font-weight:600;color:white;font-size:0.9rem;
+                    `;
+                    avatar.textContent = rec.name[0].toUpperCase();
+                    const info = document.createElement('div');
+
+                    let timeLine = `<span style="color:#16A34A"><i data-lucide="log-in" style="width:10px;height:10px;"></i> ${rec.login_time || '—'}</span>`;
+                    if (rec.logout_time) {
+                        timeLine += ` &bull; <span style="color:#DC2626"><i data-lucide="log-out" style="width:10px;height:10px;"></i> ${rec.logout_time}</span>`;
+                    }
+
+                    info.innerHTML = `
+                        <div style="font-size:0.95rem;font-weight:600;color:var(--text-primary);">${rec.name}</div>
+                        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;display:flex;align-items:center;gap:4px;">
+                            ${timeLine}
+                        </div>
+                    `;
+                    item.appendChild(avatar);
+                    item.appendChild(info);
+                    feed.appendChild(item);
+                });
+                if (window.lucide) lucide.createIcons();
+            }
+        } catch (e) { /* silent */ }
+    }
+
+    loadTodayStats();
+</script>
+{% endblock %}

@@ -1,0 +1,314 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard — FaceTrack AI{% endblock %}
+
+{% block head_extra %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block body %}
+<!-- Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="flash-container">
+    {% for category, message in messages %}
+    <div class="flash-msg {{ category }}">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<div class="admin-layout">
+    {% include 'partials/sidebar.html' %}
+
+    <div class="main-content">
+        <!-- Topbar -->
+        <div class="topbar">
+            <div>
+                <div class="topbar-title">Dashboard</div>
+                <div style="font-size:0.85rem;color:var(--text-muted);margin-top:2px;">{{ today }} — Real-time
+                    attendance overview</div>
+            </div>
+            <div class="topbar-right">
+                <span style="font-size:0.85rem;color:var(--text-muted);display:flex;align-items:center;gap:6px;">
+                    <i data-lucide="clock" style="width:14px;height:14px;"></i> <span id="live-clock"></span>
+                </span>
+                <a href="{{ url_for('add_employee_route') }}" class="btn btn-primary btn-sm">
+                    <i data-lucide="user-plus" style="width:16px;height:16px;"></i> Add Employee
+                </a>
+            </div>
+        </div>
+
+        <div class="page-content">
+            <!-- Stats Grid -->
+            <div class="stat-grid">
+                <div class="stat-card primary animate-in">
+                    <div class="stat-icon primary"><i data-lucide="users"></i></div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="stat-total">{{ stats.total_employees }}</div>
+                        <div class="stat-label">Total Employees</div>
+                    </div>
+                </div>
+                <div class="stat-card success animate-in">
+                    <div class="stat-icon success"><i data-lucide="user-check"></i></div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="stat-present">{{ stats.present_today }}</div>
+                        <div class="stat-label">Present Today</div>
+                    </div>
+                </div>
+                <div class="stat-card danger animate-in">
+                    <div class="stat-icon danger"><i data-lucide="user-x"></i></div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="stat-absent">{{ stats.absent_today }}</div>
+                        <div class="stat-label">Absent Today</div>
+                    </div>
+                </div>
+                <div class="stat-card info animate-in">
+                    <div class="stat-icon info"><i data-lucide="clock"></i></div>
+                    <div class="stat-content">
+                        <div class="stat-value">{{ stats.avg_working_hours }}h</div>
+                        <div class="stat-label">Avg. Working Hours</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="grid-2 mb-3">
+                <!-- Monthly Attendance Bar Chart -->
+                <div class="card animate-in">
+                    <div class="card-header">
+                        <div class="card-title">Monthly Attendance</div>
+                        <span class="badge badge-primary">This Month</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="barChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Present vs Absent Doughnut -->
+                <div class="card animate-in">
+                    <div class="card-header">
+                        <div class="card-title">Today's Overview</div>
+                        <span class="badge badge-success">Live</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="doughnutChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Department Chart -->
+            <div class="grid-2 mb-3">
+                <div class="card animate-in">
+                    <div class="card-header">
+                        <div class="card-title">Department Breakdown</div>
+                        <span class="badge badge-info">Today</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="deptChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="card animate-in">
+                    <div class="card-header">
+                        <div class="card-title">Quick Actions</div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:12px;">
+                        <a href="{{ url_for('index') }}" target="_blank" class="btn btn-primary"
+                            style="justify-content:center;">
+                            <i data-lucide="webcam" style="width:18px;height:18px;"></i> Open Face Scanner
+                        </a>
+                        <a href="{{ url_for('add_employee_route') }}" class="btn btn-outline"
+                            style="justify-content:center;">
+                            <i data-lucide="user-plus" style="width:18px;height:18px;"></i> Register New Employee
+                        </a>
+                        <a href="{{ url_for('attendance_page') }}" class="btn btn-outline"
+                            style="justify-content:center;">
+                            <i data-lucide="file-text" style="width:18px;height:18px;"></i> View Full Attendance
+                        </a>
+                        <a href="{{ url_for('export_attendance') }}" class="btn btn-outline"
+                            style="justify-content:center;">
+                            <i data-lucide="download" style="width:18px;height:18px;"></i> Export Attendance CSV
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Today's Attendance Table -->
+            <div class="card animate-in">
+                <div class="card-header">
+                    <div class="card-title">Today's Attendance — {{ today }}</div>
+                    <div class="d-flex gap-8 align-center">
+                        <div class="search-input" style="min-width:200px;">
+                            <i data-lucide="search" class="search-icon"></i>
+                            <input type="text" placeholder="Search..." data-search-table="todayTable">
+                        </div>
+                        <a href="{{ url_for('attendance_page') }}" class="btn btn-outline btn-sm">View All</a>
+                    </div>
+                </div>
+
+                {% if today_records %}
+                <div class="table-wrapper">
+                    <table id="todayTable">
+                        <thead>
+                            <tr>
+                                <th>Employee</th>
+                                <th>ID</th>
+                                <th>Login Time</th>
+                                <th>Logout Time</th>
+                                <th>Hours</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for rec in today_records %}
+                            <tr class="animate-in">
+                                <td>
+                                    <div class="emp-name-cell">
+                                        <div class="emp-avatar">{{ rec.name[0].upper() }}</div>
+                                        <span class="td-primary">{{ rec.name }}</span>
+                                    </div>
+                                </td>
+                                <td>{{ rec.employee_id }}</td>
+                                <td>{{ rec.login_time or '—' }}</td>
+                                <td>{{ rec.logout_time or '—' }}</td>
+                                <td>
+                                    {% if rec.working_hours %}
+                                    <strong style="color:var(--text-primary);">{{ rec.working_hours }}h</strong>
+                                    {% else %}—{% endif %}
+                                </td>
+                                <td>
+                                    {% if rec.status == 'Present' %}
+                                    <span class="badge badge-success"><i data-lucide="check-circle"
+                                            style="width:14px;height:14px;"></i> Present</span>
+                                    {% elif rec.status == 'Late' %}
+                                    <span class="badge badge-warning"><i data-lucide="clock"
+                                            style="width:14px;height:14px;"></i> Late</span>
+                                    {% else %}
+                                    <span class="badge badge-info">{{ rec.status }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i data-lucide="clipboard-list" class="empty-icon"></i>
+                    <p>No attendance recorded today yet.</p>
+                    <a href="{{ url_for('index') }}" target="_blank" class="btn btn-primary btn-sm mt-3">
+                        Open Scanner Terminal
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div><!-- /page-content -->
+    </div><!-- /main-content -->
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script id="chart-data" type="application/json">
+{
+    "chartLabels": {{ chart_labels|safe }},
+    "chartData":   {{ chart_data|safe }},
+    "deptLabels":  {{ dept_labels|safe }},
+    "deptPresent": {{ dept_present|safe }},
+    "deptAbsent":  {{ dept_absent|safe }},
+    "statPresent": {{ stats.present_today }},
+    "statAbsent":  {{ stats.absent_today }}
+}
+</script>
+<script>
+    // Live Clock
+    function updateClock() {
+        var now = new Date();
+        var t = now.toLocaleTimeString('en-IN', { hour12: true });
+        var el = document.getElementById('live-clock');
+        if (el) el.textContent = t;
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    // Charts — read data from JSON island to avoid IDE linting false positives
+    document.addEventListener('DOMContentLoaded', function () {
+        var raw = JSON.parse(document.getElementById('chart-data').textContent);
+        var chartLabels = raw.chartLabels;
+        var chartData = raw.chartData;
+        var deptLabels = raw.deptLabels;
+        var deptPresent = raw.deptPresent;
+        var deptAbsent = raw.deptAbsent;
+        var statPresent = raw.statPresent;
+        var statAbsent = raw.statAbsent;
+
+        // Monthly Bar Chart
+        if (document.getElementById('barChart')) {
+            createBarChart(
+                document.getElementById('barChart').getContext('2d'),
+                chartLabels, chartData, 'Employees Present'
+            );
+        }
+
+        // Doughnut — Present vs Absent
+        if (document.getElementById('doughnutChart')) {
+            createDoughnutChart(
+                document.getElementById('doughnutChart').getContext('2d'),
+                ['Present', 'Absent'],
+                [statPresent, statAbsent],
+                ['#16A34A', '#DC2626']
+            );
+        }
+
+        // Department Grouped Bar Chart
+        if (document.getElementById('deptChart')) {
+            new Chart(document.getElementById('deptChart').getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: deptLabels.length ? deptLabels : ['No Data'],
+                    datasets: [
+                        {
+                            label: 'Present',
+                            data: deptPresent,
+                            backgroundColor: '#16A34A',
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'Absent',
+                            data: deptAbsent,
+                            backgroundColor: '#DC2626',
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#6B7280', font: { family: 'Inter', size: 12 } } },
+                        tooltip: {
+                            backgroundColor: '#1F2937', borderColor: '#E2E8E6', borderWidth: 1,
+                            titleColor: '#FFFFFF', bodyColor: '#F3F4F6', padding: 10
+                        }
+                    },
+                    scales: {
+                        y: { ticks: { color: '#6B7280' }, grid: { color: '#E5E7EB' }, border: { dash: [4, 4] } },
+                        x: { ticks: { color: '#6B7280' }, grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        // Auto-refresh stats every 30s
+        if (typeof initDashboardRefresh === 'function') {
+            initDashboardRefresh();
+        }
+    });
+
+    if (window.lucide) {
+        lucide.createIcons();
+    }
+</script>
+{% endblock %}

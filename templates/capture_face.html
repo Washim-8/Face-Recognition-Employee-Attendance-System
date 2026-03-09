@@ -1,0 +1,379 @@
+{% extends 'base.html' %}
+{% block title %}Capture Face — {{ employee.name }}{% endblock %}
+
+{% block body %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="flash-container">
+    {% for category, message in messages %}
+    <div class="flash-msg {{ category }}">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<div class="admin-layout">
+    {% include 'partials/sidebar.html' %}
+    <div class="main-content">
+        <div class="topbar">
+            <div>
+                <div class="topbar-title">Face Model Setup — {{ employee.name }}</div>
+                <div style="font-size:0.85rem;color:var(--text-muted);margin-top:2px;">Step 2: Capture face images for
+                    recognition training</div>
+            </div>
+            <a href="{{ url_for('manage_employees') }}" class="btn btn-outline btn-sm">
+                <i data-lucide="corner-up-left" style="width:16px;height:16px;"></i> Skip for Now
+            </a>
+        </div>
+
+        <div class="page-content">
+            <div class="grid-2" style="max-width:1080px;margin:0 auto;align-items:start;">
+                <!-- Camera Panel -->
+                <div>
+                    <div class="card animate-in">
+                        <div class="card-header">
+                            <div class="card-title" style="display:flex;align-items:center;gap:8px;">
+                                <i data-lucide="video" style="width:20px;height:20px;color:var(--primary);"></i> Live
+                                Camera
+                            </div>
+                            <span class="badge badge-info" id="cameraStatus">Inactive</span>
+                        </div>
+
+                        <div class="camera-container"
+                            style="aspect-ratio:4/3;max-width:100%;background:#F3F4F6;border:1px solid var(--border);">
+                            <video id="videoFeed" autoplay muted playsinline></video>
+                            <canvas id="canvasOverlay" style="display:none;"></canvas>
+                            <div class="camera-corner tl"></div>
+                            <div class="camera-corner tr"></div>
+                            <div class="camera-corner bl"></div>
+                            <div class="camera-corner br"></div>
+                            <div class="scan-line" id="scanLine"
+                                style="display:none;background:rgba(15,118,110,0.5);box-shadow:0 0 10px rgba(15,118,110,0.5);">
+                            </div>
+                            <div class="recognition-status idle" id="captureStatus">
+                                Click "Access Camera" to begin
+                            </div>
+                        </div>
+
+                        <div style="margin-top:20px;">
+                            <div class="capture-progress"
+                                style="background:#E5E7EB;border:none;box-shadow:inset 0 1px 2px rgba(0,0,0,0.05);">
+                                <div class="capture-progress-bar" id="progressBar"
+                                    data-pct="{{ (captured_count / required_images * 100)|round }}"
+                                    style="width:0%;background:var(--primary);box-shadow:none;">
+                                </div>
+                            </div>
+                            <div
+                                style="display:flex;justify-content:space-between;font-size:0.85rem;color:var(--text-muted);margin-top:6px;font-weight:500;">
+                                <span id="captureCount">{{ captured_count }} captured</span>
+                                <span>{{ required_images }} required</span>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-12 mt-3 flex-wrap">
+                            <button id="btnStartCamera" onclick="startCamera()" class="btn btn-primary"
+                                style="flex:1;justify-content:center;">
+                                <i data-lucide="camera" style="width:18px;height:18px;"></i> Access Camera
+                            </button>
+                            <button id="btnStartCapture" onclick="startCapture()" class="btn btn-success"
+                                style="flex:1;justify-content:center;" disabled>
+                                <i data-lucide="zap" style="width:18px;height:18px;"></i> Auto Capture
+                            </button>
+                            <button id="btnClearDataset" onclick="clearDataset()" class="btn btn-outline"
+                                style="color:var(--danger);border-color:#FECACA;background:#FEF2F2;">
+                                <i data-lucide="trash-2" style="width:18px;height:18px;"></i> Reset
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Info + Train Panel -->
+                <div style="display:flex;flex-direction:column;gap:20px;">
+                    <!-- Employee Info -->
+                    <div class="card animate-in">
+                        <div class="card-title mb-3" style="display:flex;align-items:center;gap:8px;">
+                            <i data-lucide="user" style="width:18px;height:18px;color:var(--primary);"></i> Employee
+                            Details
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:12px;">
+                            {% set info_items = [
+                            ('Employee ID', employee.employee_id),
+                            ('Name', employee.name),
+                            ('Department', employee.department),
+                            ('Position', employee.position or '—'),
+                            ('Email', employee.email or '—')
+                            ] %}
+                            {% for label, value in info_items %}
+                            <div
+                                style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
+                                <span style="font-size:0.8rem;color:var(--text-secondary);font-weight:500;">{{ label
+                                    }}</span>
+                                <span style="font-size:0.9rem;font-weight:600;color:var(--text-primary);">{{ value
+                                    }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Train Model -->
+                    <div class="card animate-in" style="border-color:#A7F3D0;background:#F0FDF4;">
+                        <div class="card-title mb-2" style="display:flex;align-items:center;gap:8px;color:#065F46;">
+                            <i data-lucide="cpu" style="width:18px;height:18px;"></i> Train Face Model
+                        </div>
+                        <p style="font-size:0.85rem;color:#064E3B;margin-bottom:16px;opacity:0.9;">
+                            Once you have captured enough images, click the button below to train
+                            the ML face recognition model for this employee.
+                        </p>
+
+                        <div id="trainStatus"
+                            style="display:none;padding:14px;border-radius:10px;margin-bottom:16px;font-size:0.9rem;font-weight:500;">
+                        </div>
+
+                        <button id="btnTrain" onclick="trainModel()" class="btn btn-success"
+                            style="width:100%;justify-content:center;font-size:1rem;padding:12px;" {{ 'disabled' if
+                            captured_count < 5 }}>
+                            <i data-lucide="play-circle" style="width:20px;height:20px;"></i> Train Model ({{
+                            captured_count }}/{{ required_images }})
+                        </button>
+
+                        <div class="mt-3" style="text-align:center;">
+                            <a href="{{ url_for('manage_employees') }}" class="btn btn-outline btn-sm"
+                                style="width:100%;justify-content:center;background:white;">
+                                <i data-lucide="check-circle" style="width:16px;height:16px;"></i> Done — Back to
+                                Directory
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Tips -->
+                    <div class="card animate-in" style="background:#F8FAFC;border:1px solid #E2E8F0;box-shadow:none;">
+                        <div class="card-title mb-3"
+                            style="display:flex;align-items:center;gap:8px;color:#334155;font-size:0.95rem;">
+                            <i data-lucide="lightbulb" style="width:16px;height:16px;color:#EAB308;"></i> Capture Tips
+                        </div>
+                        <ul style="list-style:none;display:flex;flex-direction:column;gap:10px;padding:0;margin:0;">
+                            {% for tip in [
+                            'Ensure good lighting on the face',
+                            'Face the camera directly',
+                            'Slightly tilt head left, right, up, down',
+                            'Avoid sunglasses or face coverings',
+                            'Multiple angles improve accuracy',
+                            'Minimum 20 images recommended'
+                            ] %}
+                            <li
+                                style="font-size:0.85rem;color:var(--text-secondary);display:flex;align-items:flex-start;gap:8px;">
+                                <i data-lucide="chevron-right"
+                                    style="width:14px;height:14px;color:var(--primary);flex-shrink:0;margin-top:2px;"></i>
+                                {{ tip }}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script id="capture-config" type="application/json">
+{ "employeeId": "{{ employee.employee_id }}", "requiredImages": {{ required_images }}, "capturedCount": {{ captured_count }} }
+</script>
+<script>
+    var _cfg = JSON.parse(document.getElementById('capture-config').textContent);
+    var EMPLOYEE_ID = _cfg.employeeId;
+    var REQUIRED_IMAGES = _cfg.requiredImages;
+    var capturedCount = _cfg.capturedCount;
+    var webcam = null;
+    var captureInterval = null;
+    var isCapturing = false;
+
+    // Restore initial progress bar width from data attribute
+    document.addEventListener('DOMContentLoaded', function () {
+        var bar = document.getElementById('progressBar');
+        if (bar) bar.style.width = (bar.getAttribute('data-pct') || 0) + '%';
+        if (window.lucide) lucide.createIcons();
+    });
+
+    function startCamera() {
+        const video = document.getElementById('videoFeed');
+        const canvas = document.getElementById('canvasOverlay');
+        webcam = new WebcamManager(video, canvas);
+
+        webcam.start().then(success => {
+            if (success) {
+                const statusBadge = document.getElementById('cameraStatus');
+                statusBadge.innerHTML = '<i data-lucide="video" style="width:12px;height:12px;"></i> Active';
+                statusBadge.className = 'badge badge-success';
+
+                const recStatus = document.getElementById('captureStatus');
+                recStatus.innerHTML = 'Camera ready — click Auto Capture';
+                recStatus.className = 'recognition-status idle';
+
+                document.getElementById('btnStartCapture').disabled = false;
+                document.getElementById('btnStartCamera').style.display = 'none';
+                document.getElementById('scanLine').style.display = 'block';
+                if (window.lucide) lucide.createIcons();
+            } else {
+                const recStatus = document.getElementById('captureStatus');
+                recStatus.innerHTML = '<i data-lucide="alert-circle" style="width:16px;height:16px;vertical-align:middle;"></i> Camera error — allow camera permission';
+                recStatus.className = 'recognition-status error';
+                if (window.lucide) lucide.createIcons();
+            }
+        });
+    }
+
+    function startCapture() {
+        if (isCapturing) {
+            stopCapture();
+            return;
+        }
+
+        isCapturing = true;
+        document.getElementById('btnStartCapture').innerHTML = '<i data-lucide="square" style="width:18px;height:18px;"></i> Stop Capture';
+        document.getElementById('btnStartCapture').className = 'btn btn-danger';
+
+        const recStatus = document.getElementById('captureStatus');
+        recStatus.innerHTML = '<i data-lucide="aperture" class="lucide-spin" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"></i> Capturing faces...';
+        recStatus.className = 'recognition-status scanning';
+        if (window.lucide) lucide.createIcons();
+
+        captureInterval = setInterval(async () => {
+            if (capturedCount >= REQUIRED_IMAGES) {
+                stopCapture();
+                const finalStatus = document.getElementById('captureStatus');
+                finalStatus.innerHTML = `<i data-lucide="check-circle" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;"></i> ${capturedCount} images captured! ready to train.`;
+                finalStatus.className = 'recognition-status success';
+                enableTrainButton();
+                if (window.lucide) lucide.createIcons();
+                return;
+            }
+
+            const frameData = webcam.captureFrame(0.85);
+            if (!frameData) return;
+
+            const res = await fetch('/api/capture-frame', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    employee_id: EMPLOYEE_ID,
+                    frame: frameData,
+                    frame_index: capturedCount + 1
+                })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                capturedCount = data.captured_count;
+                updateProgress(capturedCount);
+            }
+        }, 350); // Capture ~3 images per second
+    }
+
+    function stopCapture() {
+        if (captureInterval) {
+            clearInterval(captureInterval);
+            captureInterval = null;
+        }
+        isCapturing = false;
+
+        const btnCapture = document.getElementById('btnStartCapture');
+        btnCapture.innerHTML = '<i data-lucide="zap" style="width:18px;height:18px;"></i> Resume Capture';
+        btnCapture.className = 'btn btn-success';
+
+        const recStatus = document.getElementById('captureStatus');
+        recStatus.innerHTML = 'Capture paused.';
+        recStatus.className = 'recognition-status idle';
+
+        if (capturedCount >= 5) enableTrainButton();
+        if (window.lucide) lucide.createIcons();
+    }
+
+    function updateProgress(count) {
+        document.getElementById('captureCount').textContent = `${count} captured`;
+        const pct = Math.min(100, Math.round(count / REQUIRED_IMAGES * 100));
+        document.getElementById('progressBar').style.width = pct + '%';
+        document.getElementById('btnTrain').innerHTML = `<i data-lucide="play-circle" style="width:18px;height:18px;"></i> Train Model (${count}/${REQUIRED_IMAGES} images)`;
+        if (window.lucide) lucide.createIcons();
+    }
+
+    function enableTrainButton() {
+        const btn = document.getElementById('btnTrain');
+        btn.disabled = false;
+        // removing hardcoded infinite glow, rely on active btn-success class
+    }
+
+    async function trainModel() {
+        const btn = document.getElementById('btnTrain');
+        const statusEl = document.getElementById('trainStatus');
+
+        btn.disabled = true;
+        btn.innerHTML = '<i data-lucide="loader-2" class="lucide-spin" style="width:18px;height:18px;"></i> Training...';
+
+        statusEl.style.display = 'block';
+        statusEl.style.background = '#EFF6FF';
+        statusEl.style.color = '#1D4ED8';
+        statusEl.style.border = '1px solid #BFDBFE';
+        statusEl.innerHTML = '<div style="display:flex;align-items:center;gap:6px;"><i data-lucide="cpu" class="lucide-spin" style="width:16px;height:16px;"></i> Analyzing face parameters and generating ML encodings... (this may take a minute)</div>';
+
+        if (window.lucide) lucide.createIcons();
+
+        const res = await fetch('/api/train-model', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ employee_id: EMPLOYEE_ID })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            statusEl.style.background = '#ECFDF5';
+            statusEl.style.color = '#047857';
+            statusEl.style.border = '1px solid #A7F3D0';
+            statusEl.innerHTML = `<div style="display:flex;align-items:center;gap:6px;"><i data-lucide="check-circle" style="width:16px;height:16px;"></i> ${data.message}</div>`;
+
+            btn.innerHTML = '<i data-lucide="check-circle" style="width:18px;height:18px;"></i> Model Trained!';
+            showNotification('Face model trained successfully!', 'success');
+        } else {
+            statusEl.style.background = '#FEF2F2';
+            statusEl.style.color = '#B91C1C';
+            statusEl.style.border = '1px solid #FECACA';
+            statusEl.innerHTML = `<div style="display:flex;flex-direction:column;gap:6px;"><div style="display:flex;align-items:center;gap:6px;"><i data-lucide="alert-triangle" style="width:16px;height:16px;"></i> ${data.message}</div><span style="font-size:0.8rem;opacity:0.8;display:flex;align-items:center;gap:4px;"><i data-lucide="lightbulb" style="width:12px;height:12px;"></i> Try: Clear dataset → Re-capture → Face front-on in good light → Train again</span></div>`;
+
+            btn.disabled = false;
+            btn.innerHTML = '<i data-lucide="refresh-cw" style="width:18px;height:18px;"></i> Retry Training';
+        }
+        if (window.lucide) lucide.createIcons();
+    }
+
+    async function clearDataset() {
+        if (!confirm('Clear all captured images for this employee? You will need to recapture them.')) return;
+        const res = await fetch('/api/clear-dataset', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ employee_id: EMPLOYEE_ID })
+        });
+        const data = await res.json();
+        if (data.success) {
+            capturedCount = 0;
+            updateProgress(0);
+            showNotification('Dataset cleared.', 'warning');
+
+            document.getElementById('btnTrain').disabled = true;
+            document.getElementById('btnTrain').innerHTML = '<i data-lucide="play-circle" style="width:18px;height:18px;"></i> Train Model (0/{{ required_images }})';
+
+            const recStatus = document.getElementById('captureStatus');
+            recStatus.innerHTML = 'Dataset cleared — ready to capture';
+            recStatus.className = 'recognition-status idle';
+
+            const statusEl = document.getElementById('trainStatus');
+            statusEl.style.display = 'none';
+
+            if (window.lucide) lucide.createIcons();
+        }
+    }
+</script>
+{% endblock %}

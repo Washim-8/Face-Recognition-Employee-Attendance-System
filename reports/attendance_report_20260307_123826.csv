@@ -1,0 +1,7 @@
+id,employee_id,name,date,login_time,logout_time,working_hours,status,late_arrival
+6,3,Washim Shaikh,2026-03-07,12:35:41,12:35:58,0.0,Late,1
+5,3,Washim Shaikh,2026-03-07,12:27:32,12:27:45,0.0,Late,1
+4,3,Washim Shaikh,2026-03-07,00:56:04,00:57:53,0.03,Present,0
+3,3,Washim Shaikh,2026-03-07,00:38:11,00:38:35,0.01,Present,0
+2,3,Washim Shaikh,2026-03-07,00:23:07,00:23:20,0.0,Present,0
+1,1,Washim Shaikh,2026-03-07,00:18:53,00:19:36,0.01,Present,0

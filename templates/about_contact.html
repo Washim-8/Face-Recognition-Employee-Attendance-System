@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About & Contact — Washim Shaikh</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #0F766E;
+            --primary-dark: #115E59;
+            --bg-light: #F8FAF9;
+            --bg-gradient: linear-gradient(135deg, #F8FAF9 0%, #E6F4F1 100%);
+            --text-primary: #1F2937;
+            --text-secondary: #374151;
+            --text-muted: #6B7280;
+            --border: #E2E8E6;
+            --card-bg: rgba(255, 255, 255, 0.7);
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --shadow-glow: 0 8px 24px rgba(15, 118, 110, 0.15);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-secondary);
+            line-height: 1.7;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        body.dark-mode {
+            --bg-gradient: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --text-primary: #F1F5F9;
+            --text-secondary: #CBD5E1;
+            --text-muted: #94A3B8;
+            --border: #334155;
+        }
+
+        /* Navbar */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 0;
+            transition: all 0.3s ease;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--primary);
+            letter-spacing: -0.02em;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 32px;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: color 0.2s;
+            position: relative;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--primary);
+            transition: width 0.3s ease;
+        }
+
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+
+        .dark-toggle {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1.2rem;
+        }
+
+        .dark-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: var(--shadow-md);
+        }
+
+        /* Main Content */
+        main {
+            padding-top: 100px;
+            padding-bottom: 80px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 32px;
+        }
+
+        /* Section */
+        section {
+            margin-bottom: 80px;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fadeInUp 0.8s ease forwards;
+        }
+
+        section:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Glass Card */
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 48px;
+            box-shadow: var(--shadow-md);
+            transition: all 0.3s ease;
+        }
+
+        .glass-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-glow);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 24px;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+        }
+
+        h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 20px;
+            letter-spacing: -0.02em;
+        }
+
+        p {
+            font-size: 1.05rem;
+            line-height: 1.8;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+        }
+
+        /* Contact Grid */
+        .contact-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 24px;
+            margin: 32px 0;
+        }
+
+        .contact-item {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .contact-item:hover {
+            transform: translateY(-6px) scale(1.02);
+            box-shadow: var(--shadow-glow);
+            border-color: var(--primary);
+        }
+
+        .contact-item strong {
+            display: block;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .contact-item a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        .contact-item a:hover {
+            color: var(--primary-dark);
+        }
+
+        .cta-text {
+            text-align: center;
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-top: 32px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-container {
+                padding: 0 20px;
+            }
+
+            .nav-links {
+                gap: 20px;
+            }
+
+            .container {
+                padding: 0 20px;
+            }
+
+            .glass-card {
+                padding: 32px 24px;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            h2 {
+                font-size: 1.6rem;
+            }
+
+            p {
+                font-size: 1rem;
+            }
+
+            .contact-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Smooth scroll */
+        html {
+            scroll-behavior: smooth;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav>
+        <div class="nav-container">
+            <div class="logo">Washim Shaikh</div>
+            <div class="nav-links">
+                <a href="/">Home</a>
+                <a href="#about">About</a>
+                <a href="#contact">Contact</a>
+                <button class="dark-toggle" onclick="toggleDarkMode()" aria-label="Toggle dark mode">
+                    <span id="themeIcon">🌙</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main>
+        <div class="container">
+            <!-- About Section -->
+            <section id="about">
+                <div class="glass-card">
+                    <h1>About Me</h1>
+                    <p>
+                        I'm a Computer Science Engineering student who builds systems that actually work. 
+                        My focus is on creating practical solutions using Python, Java, and modern web technologies. 
+                        I've worked on projects ranging from e-auction platforms connecting farmers directly with buyers 
+                        to AI-powered chatbots and fraud detection systems.
+                    </p>
+                    <p>
+                        What drives me is solving real problems. Whether it's building AgriTrade to help farmers get fair prices, 
+                        developing machine learning models for customer churn prediction, or creating face recognition systems 
+                        for attendance tracking, I'm interested in technology that makes a tangible difference. I've completed 
+                        internships in AI, machine learning, and full-stack development, and I'm currently expanding my cloud 
+                        expertise through an AWS internship.
+                    </p>
+                    <p>
+                        I work across the stack—from training vision transformers and building LLM-based systems to designing 
+                        clean, functional web interfaces. My toolkit includes Python, Java, Django, MySQL, and various ML frameworks. 
+                        If you're working on something interesting or need someone who can turn ideas into working code, let's talk.
+                    </p>
+                </div>
+            </section>
+
+            <!-- Contact Section -->
+            <section id="contact">
+                <div class="glass-card">
+                    <h2>Let's Build Something Great</h2>
+                    <p>
+                        I'm always open to new opportunities, collaborations, or interesting project ideas. 
+                        Whether you're looking to build something from scratch or improve an existing system, 
+                        feel free to reach out.
+                    </p>
+
+                    <div class="contact-grid">
+                        <div class="contact-item">
+                            <strong>Email</strong>
+                            <a href="mailto:washimshaikh33@gmail.com">washimshaikh33@gmail.com</a>
+                        </div>
+                        <div class="contact-item">
+                            <strong>Phone</strong>
+                            <a href="tel:+918884958185">+91 8884958185</a>
+                        </div>
+                        <div class="contact-item">
+                            <strong>GitHub</strong>
+                            <a href="https://github.com/Washim-8" target="_blank" rel="noopener">github.com/Washim-8</a>
+                        </div>
+                        <div class="contact-item">
+                            <strong>LinkedIn</strong>
+                            <a href="https://www.linkedin.com/in/washim-shaikh-349868281/" target="_blank" rel="noopener">View Profile</a>
+                        </div>
+                    </div>
+
+                    <p class="cta-text">Let's connect and create something impactful.</p>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        // Dark mode toggle
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const icon = document.getElementById('themeIcon');
+            const isDark = document.body.classList.contains('dark-mode');
+            icon.textContent = isDark ? '☀️' : '🌙';
+            localStorage.setItem('darkMode', isDark ? 'enabled' : 'disabled');
+        }
+
+        // Load dark mode preference
+        if (localStorage.getItem('darkMode') === 'enabled') {
+            document.body.classList.add('dark-mode');
+            document.getElementById('themeIcon').textContent = '☀️';
+        }
+
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

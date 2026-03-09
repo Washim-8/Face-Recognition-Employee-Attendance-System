@@ -1,0 +1,168 @@
+{% extends 'base.html' %}
+{% block title %}Analytics — FaceTrack AI{% endblock %}
+
+{% block head_extra %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block body %}
+<div class="admin-layout">
+    {% include 'partials/sidebar.html' %}
+    <div class="main-content">
+        <div class="topbar">
+            <div>
+                <div class="topbar-title">Analytics Dashboard</div>
+                <div style="font-size:0.85rem;color:var(--text-muted);margin-top:2px;">Attendance trends and insights
+                </div>
+            </div>
+            <a href="{{ url_for('export_attendance') }}" class="btn btn-outline btn-sm">
+                <i data-lucide="download" style="width:16px;height:16px;"></i> Export Report
+            </a>
+        </div>
+
+        <div class="page-content">
+            <!-- Stat Cards -->
+            <div class="stat-grid mb-3">
+                <div class="stat-card primary animate-in">
+                    <div class="stat-icon primary"><i data-lucide="users"></i></div>
+                    <div class="stat-content">
+                        <div class="stat-value">{{ stats.total_employees }}</div>
+                        <div class="stat-label">Total Employees</div>
+                    </div>
+                </div>
+                <div class="stat-card success animate-in">
+                    <div class="stat-icon success"><i data-lucide="user-check"></i></div>
+                    <div class="stat-content">
+                        <div class="stat-value">{{ stats.present_today }}</div>
+                        <div class="stat-label">Present Today</div>
+                    </div>
+                </div>
+                <div class="stat-card danger animate-in">
+                    <div class="stat-icon danger"><i data-lucide="user-x"></i></div>
+                    <div class="stat-content">
+                        <div class="stat-value">{{ stats.absent_today }}</div>
+                        <div class="stat-label">Absent Today</div>
+                    </div>
+                </div>
+                <div class="stat-card info animate-in">
+                    <div class="stat-icon info"><i data-lucide="trending-up"></i></div>
+                    <div class="stat-content">
+                        <div class="stat-value">{{ stats.attendance_rate }}%</div>
+                        <div class="stat-label">Attendance Rate</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Row 1 -->
+            <div class="grid-2 mb-3">
+                <!-- Monthly Bar -->
+                <div class="card animate-in">
+                    <div class="card-header">
+                        <div class="card-title">Monthly Attendance Trend</div>
+                        <span class="badge badge-primary">This Month</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="monthlyBar"></canvas>
+                    </div>
+                </div>
+
+                <!-- Weekly Line -->
+                <div class="card animate-in">
+                    <div class="card-header">
+                        <div class="card-title">Last 7 Days</div>
+                        <span class="badge badge-info">Week</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="weeklyLine"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Row 2 -->
+            <div class="grid-2 mb-3">
+                <!-- Department Bar -->
+                <div class="card animate-in">
+                    <div class="card-header">
+                        <div class="card-title">Department Attendance</div>
+                        <span class="badge badge-success">Today</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="deptBar"></canvas>
+                    </div>
+                </div>
+
+                <!-- Present/Absent Doughnut -->
+                <div class="card animate-in">
+                    <div class="card-header">
+                        <div class="card-title">Attendance Distribution</div>
+                        <span class="badge badge-success">Today</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="doughnut"></canvas>
+                    </div>
+                    <div style="display:flex;justify-content:center;gap:32px;margin-top:20px;padding-bottom:12px;">
+                        <div
+                            style="display:flex;align-items:center;gap:8px;font-size:0.9rem;color:var(--text-secondary);font-weight:500;">
+                            <span
+                                style="width:12px;height:12px;background:#16A34A;border-radius:50%;display:block;"></span>
+                            Present ({{ stats.present_today }})
+                        </div>
+                        <div
+                            style="display:flex;align-items:center;gap:8px;font-size:0.9rem;color:var(--text-secondary);font-weight:500;">
+                            <span
+                                style="width:12px;height:12px;background:#DC2626;border-radius:50%;display:block;"></span>
+                            Absent ({{ stats.absent_today }})
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const monthlyLabels = {{ chart_labels| safe
+    }};
+    const monthlyData = {{ chart_data| safe }};
+    const weekLabels = {{ week_labels| safe }};
+    const weekData = {{ week_data| safe }};
+    const deptLabels = {{ dept_labels| safe }};
+    const deptPresent = {{ dept_present| safe }};
+    const deptAbsent = {{ dept_absent| safe }};
+
+    createBarChart(document.getElementById('monthlyBar').getContext('2d'), monthlyLabels, monthlyData, 'Employees Present');
+    createLineChart(document.getElementById('weeklyLine').getContext('2d'), weekLabels, weekData, 'Daily Attendance');
+
+    // Dept grouped bar
+    new Chart(document.getElementById('deptBar').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: deptLabels.length ? deptLabels : ['No Data'],
+            datasets: [
+                { label: 'Present', data: deptPresent, backgroundColor: '#16A34A', borderRadius: 4 },
+                { label: 'Absent', data: deptAbsent, backgroundColor: '#DC2626', borderRadius: 4 }
+            ]
+        },
+        options: {
+            ...getChartDefaults(),
+            scales: {
+                y: { ticks: { color: '#6B7280' }, grid: { color: '#E5E7EB' } },
+                x: { ticks: { color: '#6B7280' }, grid: { display: false } }
+            }
+        }
+    });
+
+    createDoughnutChart(
+        document.getElementById('doughnut').getContext('2d'),
+        ['Present', 'Absent'],
+        [{{ stats.present_today }}, {{ stats.absent_today }}],
+        ['#16A34A', '#DC2626']
+    );
+
+    if (window.lucide) lucide.createIcons();
+    });
+</script>
+{% endblock %}

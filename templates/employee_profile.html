@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+{% block title %}{{ employee.name }} — Employee Profile{% endblock %}
+
+{% block body %}
+<div class="admin-layout">
+    {% include 'partials/sidebar.html' %}
+    <div class="main-content">
+        <div class="topbar">
+            <div>
+                <div class="topbar-title">Employee Profile</div>
+                <div style="font-size:0.85rem;color:var(--text-muted);margin-top:2px;">{{ employee.name }} — {{
+                    employee.employee_id }}</div>
+            </div>
+            <div class="topbar-right">
+                <a href="{{ url_for('edit_employee_route', employee_id=employee.employee_id) }}"
+                    class="btn btn-outline btn-sm">
+                    <i data-lucide="edit-2" style="width:16px;height:16px;"></i> Edit Details
+                </a>
+                <a href="{{ url_for('manage_employees') }}" class="btn btn-outline btn-sm">
+                    <i data-lucide="corner-up-left" style="width:16px;height:16px;"></i> Back
+                </a>
+            </div>
+        </div>
+
+        <div class="page-content">
+            <div class="grid-1-2" style="align-items:start;">
+                <!-- Profile Card Column -->
+                <div style="display:flex;flex-direction:column;gap:20px;">
+                    <div class="card animate-in text-center">
+                        <div id="avatar"
+                            style="width:84px;height:84px;border-radius:50%;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-size:2.5rem;font-weight:700;color:white;box-shadow:var(--shadow-sm);">
+                            {{ employee.name[0].upper() }}
+                        </div>
+                        <h2 class="font-outfit"
+                            style="font-size:1.4rem;color:var(--text-primary);letter-spacing:-0.01em;">{{ employee.name
+                            }}</h2>
+                        <p style="color:var(--text-muted);font-size:0.9rem;margin-top:2px;">{{ employee.position or
+                            'Employee' }}</p>
+
+                        <div style="margin-top:16px;">
+                            {% if employee.face_encoding %}
+                            <span class="badge badge-success" style="padding:6px 12px;"><i data-lucide="check-circle"
+                                    style="width:14px;height:14px;"></i> Face Model Trained</span>
+                            {% else %}
+                            <span class="badge badge-warning" style="padding:6px 12px;"><i data-lucide="alert-triangle"
+                                    style="width:14px;height:14px;"></i> Face Not Trained</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="card animate-in">
+                        <div class="card-title mb-3" style="display:flex;align-items:center;gap:8px;">
+                            <i data-lucide="clipboard-list" style="width:18px;height:18px;color:var(--primary);"></i>
+                            Directory Details
+                        </div>
+                        {% set fields = [
+                        ('Employee ID', employee.employee_id),
+                        ('Department', employee.department),
+                        ('Email', employee.email or '—'),
+                        ('Phone', employee.phone or '—'),
+                        ('Join Date', employee.join_date or '—')
+                        ] %}
+                        {% for label, value in fields %}
+                        <div
+                            style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
+                            <span style="font-size:0.8rem;color:var(--text-secondary);font-weight:500;">{{ label
+                                }}</span>
+                            <span style="font-size:0.9rem;font-weight:600;color:var(--text-primary);">{{ value }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Summary Stats -->
+                    <div class="card animate-in">
+                        <div class="card-title mb-3" style="display:flex;align-items:center;gap:8px;">
+                            <i data-lucide="bar-chart-2" style="width:18px;height:18px;color:var(--primary);"></i> KPI
+                            Overview
+                        </div>
+                        {% set summary = [
+                        ('calendar', 'Total Days Recorded', total_days),
+                        ('clock', 'Total Hours Logged', total_hours ~ 'h'),
+                        ('trending-up', 'Avg Hours/Day', avg_hours ~ 'h'),
+                        ('alert-circle', 'Late Arrivals', late_days)
+                        ] %}
+                        {% for icon, label, value in summary %}
+                        <div
+                            style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);align-items:center;">
+                            <span
+                                style="font-size:0.85rem;color:var(--text-secondary);display:flex;align-items:center;gap:6px;">
+                                <i data-lucide="{{ icon }}" style="width:14px;height:14px;"></i> {{ label }}
+                            </span>
+                            <span style="font-size:1rem;font-weight:700;color:var(--text-primary);">{{ value }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <a href="{{ url_for('capture_face_route', employee_id=employee.employee_id) }}"
+                        class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;">
+                        <i data-lucide="camera" style="width:18px;height:18px;"></i> Manage Face Data
+                    </a>
+                </div>
+
+                <!-- Attendance History -->
+                <div class="card animate-in" style="display:flex;flex-direction:column;height:100%;">
+                    <div class="card-header">
+                        <div class="card-title" style="display:flex;align-items:center;gap:8px;">
+                            <i data-lucide="history" style="width:20px;height:20px;color:var(--primary);"></i>
+                            Attendance Log
+                        </div>
+                        <a href="{{ url_for('export_attendance', employee_id=employee.employee_id) }}"
+                            class="btn btn-outline btn-sm">
+                            <i data-lucide="download" style="width:14px;height:14px;"></i> Export Log
+                        </a>
+                    </div>
+
+                    {% if records %}
+                    <div class="table-wrapper" style="flex:1;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Check In</th>
+                                    <th>Check Out</th>
+                                    <th>Duration</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for rec in records[:50] %}
+                                <tr>
+                                    <td style="color:var(--text-primary);font-weight:500;">{{ rec.date }}</td>
+                                    <td style="color:#16A34A;font-weight:500;">{{ rec.login_time or '—' }}</td>
+                                    <td style="color:#0284C7;font-weight:500;">{{ rec.logout_time or '—' }}</td>
+                                    <td>
+                                        {% if rec.working_hours %}
+                                        <strong style="color:var(--text-primary);">{{ rec.working_hours }}h</strong>
+                                        {% else %}<span style="color:var(--text-muted);">—</span>{% endif %}
+                                    </td>
+                                    <td>
+                                        {% if rec.status == 'Present' %}
+                                        <span class="badge badge-success"><i data-lucide="check-circle"
+                                                style="width:12px;height:12px;"></i> Present</span>
+                                        {% elif rec.status == 'Late' %}
+                                        <span class="badge badge-warning"><i data-lucide="clock"
+                                                style="width:12px;height:12px;"></i> Late</span>
+                                        {% else %}
+                                        <span class="badge badge-info">{{ rec.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="empty-state" style="flex:1;">
+                        <i data-lucide="calendar-off" class="empty-icon"></i>
+                        <p>No historical attendance records.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Hash avatar
+        const hash = "{{ employee.name }}".length * 137.5 % 360;
+        document.getElementById('avatar').style.background = `hsl(${hash}, 40%, 45%)`;
+
+        if (window.lucide) lucide.createIcons();
+    });
+</script>
+{% endblock %}

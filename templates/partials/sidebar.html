@@ -1,0 +1,74 @@
+<!-- Sidebar Partial — included in all admin pages -->
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+        <div class="logo-icon"><i data-lucide="scan-face" style="width:24px;height:24px;"></i></div>
+        <div class="logo-title">FaceTrack AI</div>
+        <div class="logo-subtitle">Attendance System</div>
+    </div>
+
+    <nav class="sidebar-nav">
+        <span class="nav-section-label">Main</span>
+
+        <a href="{{ url_for('admin_dashboard') }}"
+            class="nav-item {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">
+            <span class="nav-icon"><i data-lucide="layout-dashboard" style="width:18px;height:18px;"></i></span>
+            Dashboard
+        </a>
+
+        <a href="{{ url_for('index') }}" class="nav-item" target="_blank">
+            <span class="nav-icon"><i data-lucide="webcam" style="width:18px;height:18px;"></i></span>
+            Face Scanner
+        </a>
+
+        <span class="nav-section-label">People</span>
+
+        <a href="{{ url_for('manage_employees') }}"
+            class="nav-item {% if 'employee' in request.endpoint %}active{% endif %}">
+            <span class="nav-icon"><i data-lucide="users" style="width:18px;height:18px;"></i></span>
+            Employees
+        </a>
+
+        <a href="{{ url_for('add_employee_route') }}"
+            class="nav-item {% if request.endpoint == 'add_employee_route' %}active{% endif %}">
+            <span class="nav-icon"><i data-lucide="user-plus" style="width:18px;height:18px;"></i></span>
+            Register Employee
+        </a>
+
+        <span class="nav-section-label">Attendance</span>
+
+        <a href="{{ url_for('attendance_page') }}"
+            class="nav-item {% if request.endpoint == 'attendance_page' %}active{% endif %}">
+            <span class="nav-icon"><i data-lucide="file-text" style="width:18px;height:18px;"></i></span>
+            Attendance Records
+        </a>
+
+        <a href="{{ url_for('analytics_page') }}"
+            class="nav-item {% if request.endpoint == 'analytics_page' %}active{% endif %}">
+            <span class="nav-icon"><i data-lucide="pie-chart" style="width:18px;height:18px;"></i></span>
+            Analytics
+        </a>
+
+        <span class="nav-section-label">Tools</span>
+
+        <a href="{{ url_for('export_attendance') }}" class="nav-item">
+            <span class="nav-icon"><i data-lucide="folder-down" style="width:18px;height:18px;"></i></span>
+            Reports
+        </a>
+    </nav>
+
+    <div class="sidebar-footer">
+        <div class="admin-info">
+            <div class="avatar">{{ session.get('admin_username', 'A')[0].upper() }}</div>
+            <div>
+                <div style="font-size:0.85rem;font-weight:600;color:var(--text-primary);">
+                    {{ session.get('admin_username', 'Admin') }}
+                </div>
+                <div style="font-size:0.72rem;color:var(--text-muted);">Administrator</div>
+            </div>
+        </div>
+        <a href="{{ url_for('admin_logout_session') }}" class="nav-item" style="color:var(--danger);margin-top:4px;">
+            <span class="nav-icon"><i data-lucide="log-out" style="width:18px;height:18px;"></i></span>
+            Logout
+        </a>
+    </div>
+</aside>

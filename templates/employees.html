@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+{% block title %}Employees — FaceTrack AI{% endblock %}
+
+{% block body %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="flash-container">
+    {% for category, message in messages %}
+    <div class="flash-msg {{ category }}">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<div class="admin-layout">
+    {% include 'partials/sidebar.html' %}
+
+    <div class="main-content">
+        <div class="topbar">
+            <div>
+                <div class="topbar-title">Employee Management</div>
+                <div style="font-size:0.85rem;color:var(--text-muted);margin-top:2px;">{{ employees|length }} employees
+                    registered</div>
+            </div>
+            <div class="topbar-right">
+                <a href="{{ url_for('add_employee_route') }}" class="btn btn-primary btn-sm">
+                    <i data-lucide="user-plus" style="width:16px;height:16px;"></i> Add Employee
+                </a>
+            </div>
+        </div>
+
+        <div class="page-content">
+            <!-- Filter Row -->
+            <div class="filter-row mb-2">
+                <div class="search-input">
+                    <i data-lucide="search" class="search-icon"></i>
+                    <input type="text" placeholder="Search employees..." data-search-table="empTable" id="empSearch">
+                </div>
+            </div>
+
+            <div class="card animate-in">
+                {% if employees %}
+                <div class="table-wrapper">
+                    <table id="empTable">
+                        <thead>
+                            <tr>
+                                <th>Employee</th>
+                                <th>ID</th>
+                                <th>Department</th>
+                                <th>Position</th>
+                                <th>Email</th>
+                                <th>Face Model</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for emp in employees %}
+                            <tr class="animate-in">
+                                <td>
+                                    <div class="emp-name-cell">
+                                        <!-- data-color used by JS below to generate pleasing light-mode pastel hues -->
+                                        <div class="emp-avatar" data-color="{{ loop.index0 }}">
+                                            {{ emp.name[0].upper() }}
+                                        </div>
+                                        <div>
+                                            <div class="td-primary">{{ emp.name }}</div>
+                                            <div style="font-size:0.75rem;color:var(--text-muted);">Joined {{
+                                                emp.join_date or '—' }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <code
+                                        style="color:var(--primary);background:#CCFBF1;padding:4px 10px;border-radius:6px;font-size:0.85rem;font-weight:600;">
+                                        {{ emp.employee_id }}
+                                    </code>
+                                </td>
+                                <td>{{ emp.department }}</td>
+                                <td>{{ emp.position or '—' }}</td>
+                                <td>{{ emp.email or '—' }}</td>
+                                <td>
+                                    {% if emp.face_encoding %}
+                                    <span class="badge badge-success"><i data-lucide="check-circle"
+                                            style="width:14px;height:14px;"></i> Trained</span>
+                                    {% else %}
+                                    <span class="badge badge-warning"><i data-lucide="alert-triangle"
+                                            style="width:14px;height:14px;"></i> Missing</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="d-flex gap-8">
+                                        <a href="{{ url_for('employee_profile', employee_id=emp.employee_id) }}"
+                                            class="btn btn-outline btn-sm" title="View Profile"
+                                            style="padding:6px 10px;">
+                                            <i data-lucide="eye" style="width:16px;height:16px;"></i>
+                                        </a>
+                                        <a href="{{ url_for('capture_face_route', employee_id=emp.employee_id) }}"
+                                            class="btn btn-outline btn-sm" title="Capture Face"
+                                            style="padding:6px 10px;">
+                                            <i data-lucide="camera" style="width:16px;height:16px;"></i>
+                                        </a>
+                                        <a href="{{ url_for('edit_employee_route', employee_id=emp.employee_id) }}"
+                                            class="btn btn-outline btn-sm" title="Edit" style="padding:6px 10px;">
+                                            <i data-lucide="edit-2" style="width:16px;height:16px;"></i>
+                                        </a>
+                                        <button onclick="deleteEmployee('{{ emp.employee_id }}', '{{ emp.name }}')"
+                                            class="btn btn-outline btn-sm" title="Delete"
+                                            style="padding:6px 10px;color:var(--danger);border-color:#FECACA;background:#FEF2F2;">
+                                            <i data-lucide="trash-2" style="width:16px;height:16px;"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i data-lucide="users" class="empty-icon"></i>
+                    <p>No employees registered yet.</p>
+                    <a href="{{ url_for('add_employee_route') }}" class="btn btn-primary btn-sm mt-3">
+                        <i data-lucide="user-plus" style="width:16px;height:16px;"></i> Add First Employee
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Apply distinct per-employee avatar colors via JS
+    // Generates soft pastel colors suitable for light mode text overlay
+    document.addEventListener('DOMContentLoaded', function () {
+        var avatars = document.querySelectorAll('.emp-avatar[data-color]');
+        avatars.forEach(function (el) {
+            var idx = parseInt(el.getAttribute('data-color'), 10);
+            var hue = (idx * 137.5) % 360; // Golden angle for even distribution
+            el.style.background = 'hsl(' + hue + ', 40%, 45%)';
+        });
+        if (window.lucide) lucide.createIcons();
+    });
+
+    function deleteEmployee(empId, empName) {
+        if (confirm(`Are you sure you want to delete ${empName}? This action cannot be undone.`)) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/admin/employees/delete/${empId}`;
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+</script>
+{% endblock %}

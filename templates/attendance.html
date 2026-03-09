@@ -1,0 +1,204 @@
+{% extends 'base.html' %}
+{% block title %}Attendance Records — FaceTrack AI{% endblock %}
+
+{% block body %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="flash-container">
+    {% for category, message in messages %}
+    <div class="flash-msg {{ category }}">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<div class="admin-layout">
+    {% include 'partials/sidebar.html' %}
+    <div class="main-content">
+        <div class="topbar">
+            <div>
+                <div class="topbar-title">Attendance Records</div>
+                <div style="font-size:0.85rem;color:var(--text-muted);margin-top:2px;">{{ records|length }} records
+                    found</div>
+            </div>
+            <div class="topbar-right">
+                <a href="{{ url_for('export_attendance', start_date=selected_date, end_date=selected_date) }}"
+                    class="btn btn-outline btn-sm">
+                    <i data-lucide="download" style="width:16px;height:16px;"></i> Export CSV
+                </a>
+            </div>
+        </div>
+
+        <div class="page-content">
+            <!-- Stat Row -->
+            <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);">
+                <div class="stat-card primary animate-in">
+                    <div class="stat-icon primary"><i data-lucide="users"></i></div>
+                    <div class="stat-content">
+                        <div class="stat-value">{{ stats.total_employees }}</div>
+                        <div class="stat-label">Total Staff</div>
+                    </div>
+                </div>
+                <div class="stat-card success animate-in">
+                    <div class="stat-icon success"><i data-lucide="user-check"></i></div>
+                    <div class="stat-content">
+                        <div class="stat-value">{{ stats.present_today }}</div>
+                        <div class="stat-label">Present</div>
+                    </div>
+                </div>
+                <div class="stat-card danger animate-in">
+                    <div class="stat-icon danger"><i data-lucide="user-x"></i></div>
+                    <div class="stat-content">
+                        <div class="stat-value">{{ stats.absent_today }}</div>
+                        <div class="stat-label">Absent</div>
+                    </div>
+                </div>
+                <div class="stat-card info animate-in">
+                    <div class="stat-icon info"><i data-lucide="trending-up"></i></div>
+                    <div class="stat-content">
+                        <div class="stat-value">{{ stats.attendance_rate }}%</div>
+                        <div class="stat-label">Response Rate</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter Form -->
+            <div class="card animate-in mb-3">
+                <form method="GET" class="d-flex gap-12 flex-wrap align-center">
+                    <div class="form-group" style="margin:0;flex:1;min-width:180px;">
+                        <label class="form-label"
+                            style="text-transform:none;font-size:0.8rem;color:var(--text-secondary);">Date
+                            Filter</label>
+                        <input type="date" name="date" class="form-control" value="{{ selected_date }}">
+                    </div>
+                    <div class="form-group" style="margin:0;flex:2;min-width:240px;">
+                        <label class="form-label"
+                            style="text-transform:none;font-size:0.8rem;color:var(--text-secondary);">Employee</label>
+                        <select name="employee_id" class="form-control">
+                            <option value="">All Employees</option>
+                            {% for emp in employees %}
+                            <option value="{{ emp.employee_id }}" {{ 'selected' if selected_employee==emp.employee_id
+                                }}>
+                                {{ emp.name }} ({{ emp.employee_id }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div style="margin-top:22px;display:flex;gap:12px;">
+                        <button type="submit" class="btn btn-primary">
+                            <i data-lucide="filter" style="width:16px;height:16px;"></i> Apply Filter
+                        </button>
+                        <a href="{{ url_for('attendance_page') }}" class="btn btn-outline">Clear</a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Attendance Table -->
+            <div class="card animate-in">
+                <div class="card-header">
+                    <div class="card-title">
+                        {% if selected_employee %}
+                        {{ employees|selectattr('employee_id', 'equalto', selected_employee)|map(attribute='name')|first
+                        }}'s History
+                        {% else %}
+                        Attendance — {{ selected_date }}
+                        {% endif %}
+                    </div>
+                    <div class="search-input" style="max-width:300px;">
+                        <i data-lucide="search" class="search-icon"></i>
+                        <input type="text" placeholder="Search records..." data-search-table="attendanceTable">
+                    </div>
+                </div>
+
+                {% if records %}
+                <div class="table-wrapper">
+                    <table id="attendanceTable">
+                        <thead>
+                            <tr>
+                                <th style="width:40px;">#</th>
+                                <th>Employee</th>
+                                <th>ID</th>
+                                <th>Date</th>
+                                <th>Login Time</th>
+                                <th>Logout Time</th>
+                                <th>Hours</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for rec in records %}
+                            <tr class="animate-in">
+                                <td style="color:var(--text-muted);">{{ loop.index }}</td>
+                                <td>
+                                    <div class="emp-name-cell">
+                                        <div class="emp-avatar" data-color="{{ loop.index0 }}">{{ rec.name[0].upper() }}
+                                        </div>
+                                        <span class="td-primary">{{ rec.name }}</span>
+                                    </div>
+                                </td>
+                                <td><code
+                                        style="color:var(--primary);background:#CCFBF1;padding:4px 8px;border-radius:6px;font-size:0.8rem;font-weight:600;">{{ rec.employee_id }}</code>
+                                </td>
+                                <td style="color:var(--text-secondary);">{{ rec.date }}</td>
+                                <td>
+                                    {% if rec.login_time %}
+                                    <span style="color:#16A34A;font-weight:500;">{{ rec.login_time }}</span>
+                                    {% else %}<span style="color:var(--text-muted);">—</span>{% endif %}
+                                </td>
+                                <td>
+                                    {% if rec.logout_time %}
+                                    <span style="color:#0284C7;font-weight:500;">{{ rec.logout_time }}</span>
+                                    {% else %}<span style="color:var(--text-muted);">—</span>{% endif %}
+                                </td>
+                                <td>
+                                    {% if rec.working_hours and rec.working_hours > 0 %}
+                                    <strong style="color:var(--text-primary);">{{ rec.working_hours }}h</strong>
+                                    {% else %}<span style="color:var(--text-muted);">—</span>{% endif %}
+                                </td>
+                                <td>
+                                    {% if rec.status == 'Present' %}
+                                    <span class="badge badge-success"><i data-lucide="check-circle"
+                                            style="width:14px;height:14px;"></i> Present</span>
+                                    {% elif rec.status == 'Late' %}
+                                    <span class="badge badge-warning"><i data-lucide="clock"
+                                            style="width:14px;height:14px;"></i> Late</span>
+                                    {% else %}
+                                    <span class="badge badge-info">{{ rec.status }}</span>
+                                    {% endif %}
+
+                                    {% if rec.late_arrival and rec.status != 'Late' %}
+                                    <span class="badge badge-warning" style="margin-left:4px;">Late</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i data-lucide="file-x" class="empty-icon"></i>
+                    <p>No attendance records found for the selected filters.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var avatars = document.querySelectorAll('.emp-avatar[data-color]');
+        avatars.forEach(function (el) {
+            var idx = parseInt(el.getAttribute('data-color'), 10);
+            var hue = (idx * 137.5) % 360;
+            el.style.background = 'hsl(' + hue + ', 40%, 45%)';
+        });
+        if (window.lucide) lucide.createIcons();
+    });
+</script>
+{% endblock %}

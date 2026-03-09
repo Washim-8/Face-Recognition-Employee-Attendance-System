@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+{% block title %}Register Employee — FaceTrack AI{% endblock %}
+
+{% block body %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="flash-container">
+    {% for category, message in messages %}
+    <div class="flash-msg {{ category }}">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<div class="admin-layout">
+    {% include 'partials/sidebar.html' %}
+
+    <div class="main-content">
+        <div class="topbar">
+            <div>
+                <div class="topbar-title">Register Employee</div>
+                <div style="font-size:0.85rem;color:var(--text-muted);margin-top:2px;">Step 1: Fill in details before
+                    face capture</div>
+            </div>
+            <a href="{{ url_for('manage_employees') }}" class="btn btn-outline btn-sm">
+                <i data-lucide="corner-up-left" style="width:16px;height:16px;"></i> Back to Directory
+            </a>
+        </div>
+
+        <div class="page-content">
+            <div style="max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:20px;">
+                <div class="card animate-in">
+                    <div class="card-header">
+                        <div class="card-title" style="display:flex;align-items:center;gap:8px;">
+                            <i data-lucide="user-plus" style="width:18px;height:18px;color:var(--primary);"></i>
+                            Employee Information
+                        </div>
+                        <span class="badge badge-primary">Step 1 of 2</span>
+                    </div>
+
+                    <form method="POST" action="{{ url_for('add_employee_route') }}" id="empForm"
+                        style="margin-top:10px;">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label" for="employee_id">Employee ID <span
+                                        style="color:var(--danger)">*</span></label>
+                                <input type="text" id="employee_id" name="employee_id" class="form-control"
+                                    placeholder="e.g. EMP001" required pattern="[A-Za-z0-9_-]+"
+                                    title="Letters, numbers, hyphens and underscores only"
+                                    value="{{ request.form.get('employee_id', '') }}">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="name">Full Name <span
+                                        style="color:var(--danger)">*</span></label>
+                                <input type="text" id="name" name="name" class="form-control"
+                                    placeholder="e.g. Rajesh Kumar" required value="{{ request.form.get('name', '') }}">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="department">Department <span
+                                        style="color:var(--danger)">*</span></label>
+                                <select id="department" name="department" class="form-control" required>
+                                    <option value="">Select Department</option>
+                                    {% set depts = ['Engineering', 'Human Resources', 'Finance', 'Marketing',
+                                    'Sales', 'Operations', 'IT', 'Administration', 'Research & Development', 'Other'] %}
+                                    {% for dept in depts %}
+                                    <option value="{{ dept }}" {{ 'selected' if request.form.get('department')==dept }}>
+                                        {{ dept }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="position">Position / Role</label>
+                                <input type="text" id="position" name="position" class="form-control"
+                                    placeholder="e.g. Software Engineer" value="{{ request.form.get('position', '') }}">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="email">Email Address</label>
+                                <input type="email" id="email" name="email" class="form-control"
+                                    placeholder="employee@company.com" value="{{ request.form.get('email', '') }}">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="phone">Phone Number</label>
+                                <input type="tel" id="phone" name="phone" class="form-control"
+                                    placeholder="+91 98765 43210" value="{{ request.form.get('phone', '') }}">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="join_date">Join Date</label>
+                                <input type="date" id="join_date" name="join_date" class="form-control"
+                                    value="{{ request.form.get('join_date', '') }}">
+                            </div>
+                        </div>
+
+                        <div style="display:flex;gap:16px;margin-top:16px;">
+                            <button type="submit" class="btn btn-primary" id="submitBtn"
+                                style="flex:1;justify-content:center;padding:12px;">
+                                <i data-lucide="save" style="width:18px;height:18px;"></i> Register & Proceed to Face
+                                Capture
+                            </button>
+                            <a href="{{ url_for('manage_employees') }}" class="btn btn-outline"
+                                style="padding:12px 24px;">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Info Card -->
+                <div class="card animate-in" style="background:#EFF6FF;border:1px solid #BFDBFE;box-shadow:none;">
+                    <div style="display:flex;gap:12px;align-items:flex-start;">
+                        <i data-lucide="info" style="color:#2563EB;margin-top:2px;"></i>
+                        <div>
+                            <div style="font-weight:600;margin-bottom:4px;color:#1E3A8A;">Next Step: Face Registration
+                            </div>
+                            <p style="font-size:0.85rem;color:#1E40AF;line-height:1.5;">
+                                After submitting these details, you'll be redirected to the face capture page where you
+                                will use your webcam to photograph the employee. The ML model requires at least 20 clear
+                                photos for accurate facial recognition.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('empForm').addEventListener('submit', function () {
+        const btn = document.getElementById('submitBtn');
+        btn.innerHTML = '<i data-lucide="loader-2" class="lucide-spin" style="width:18px;height:18px;"></i> Registering...';
+        btn.disabled = true;
+        if (window.lucide) lucide.createIcons();
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (window.lucide) lucide.createIcons();
+    });
+</script>
+{% endblock %}
