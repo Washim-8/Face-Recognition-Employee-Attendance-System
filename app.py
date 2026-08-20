@@ -537,14 +537,14 @@ def api_today_attendance():
 
 
 # ============================================================
-# Run
+# Run  (development only — production uses gunicorn via Procfile)
 # ============================================================
 if __name__ == '__main__':
     print("=" * 60)
     print("  Face Recognition Attendance System")
-    print("  Starting Flask Server...")
-    print("  URL: http://127.0.0.1:5000")
-    print("  Admin: http://127.0.0.1:5000/admin/login")
-    print("  Admin Login: admin / admin123")
+    print(f"  Starting Flask on port {config.PORT} …")
+    print(f"  URL: http://127.0.0.1:{config.PORT}")
+    print(f"  Admin: http://127.0.0.1:{config.PORT}/admin/login")
+    print(f"  Debug: {config.DEBUG}")
     print("=" * 60)
-    app.run(debug=config.DEBUG, host='0.0.0.0', port=5000)
+    app.run(debug=config.DEBUG, host='0.0.0.0', port=config.PORT)

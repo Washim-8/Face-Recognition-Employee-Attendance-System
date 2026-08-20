@@ -1,0 +1,43 @@
+# ── Environment & secrets ─────────────────────────────────────────────────────
+.env
+*.env
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# ── Virtual environments ──────────────────────────────────────────────────────
+venv/
+.venv/
+env/
+.env/
+
+# ── Local database ────────────────────────────────────────────────────────────
+database/attendance.db
+database/*.db
+
+# ── Face dataset (large binary files — store externally if needed) ────────────
+dataset/
+
+# ── Trained model pickle ──────────────────────────────────────────────────────
+models/
+
+# ── Generated reports ─────────────────────────────────────────────────────────
+reports/
+
+# ── IDE / OS ──────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.DS_Store
+Thumbs.db
+
+# ── Test artefacts ────────────────────────────────────────────────────────────
+test_out*.txt
+test_enc.py

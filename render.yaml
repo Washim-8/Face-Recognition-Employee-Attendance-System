@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: face-attendance
+    runtime: python
+    region: oregon          # change to your preferred Render region
+    plan: free              # upgrade to starter/standard for always-on
+
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --workers 2 --threads 2 --timeout 120 --bind 0.0.0.0:$PORT
+
+    envVars:
+      # ── Required — set these in the Render dashboard (or via CLI) ──────────
+      - key: DATABASE_URL
+        sync: false         # mark sync:false so Render prompts you to fill it in
+
+      - key: SECRET_KEY
+        generateValue: true # Render generates a secure random value automatically
+
+      - key: ADMIN_USERNAME
+        value: admin
+
+      - key: ADMIN_PASSWORD
+        sync: false         # set a strong password in the dashboard
+
+      # ── Optional — defaults shown ──────────────────────────────────────────
+      - key: FLASK_DEBUG
+        value: "false"
+
+      - key: WORK_START_TIME
+        value: "09:00"
+
+      - key: LATE_THRESHOLD_MINUTES
+        value: "15"
+
+      - key: FACE_RECOGNITION_TOLERANCE
+        value: "0.5"
+
+      - key: IMAGES_PER_EMPLOYEE
+        value: "30"
