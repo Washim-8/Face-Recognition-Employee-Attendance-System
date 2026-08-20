@@ -2,7 +2,6 @@ services:
   - type: web
     name: face-attendance
     runtime: python
-    pythonVersion: "3.11.9"
     region: oregon          # change to your preferred Render region
     plan: free              # upgrade to starter/standard for always-on
 
