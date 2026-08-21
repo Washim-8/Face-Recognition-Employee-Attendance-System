@@ -9,6 +9,10 @@ services:
     startCommand: gunicorn app:app --workers 1 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT
 
     envVars:
+      # ── Python runtime version ──────────────────────────────────────────────
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+
       # ── Required — set these in the Render dashboard (or via CLI) ──────────
       - key: DATABASE_URL
         sync: false         # mark sync:false so Render prompts you to fill it in
