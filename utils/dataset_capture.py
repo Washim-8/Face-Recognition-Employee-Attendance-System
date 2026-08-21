@@ -30,14 +30,14 @@ def capture_face_dataset(employee_id, num_images=None):
     
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
-        print("❌ Error: Cannot open camera.")
+        print("[ERROR] Cannot open camera.")
         return False
     
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
     
     count = 0
-    print(f"📸 Capturing {num_images} images for employee {employee_id}")
+    print(f"[CAPTURE] Capturing {num_images} images for employee {employee_id}")
     print("Press 'q' to quit early, 's' to skip a frame.")
     
     while count < num_images:
@@ -87,7 +87,7 @@ def capture_face_dataset(employee_id, num_images=None):
     cap.release()
     cv2.destroyAllWindows()
     
-    print(f"✅ Captured {count} images for employee {employee_id}")
+    print(f"[OK] Captured {count} images for employee {employee_id}")
     return count > 0
 
 

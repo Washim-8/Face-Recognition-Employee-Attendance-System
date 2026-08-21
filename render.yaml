@@ -5,8 +5,8 @@ services:
     region: oregon          # change to your preferred Render region
     plan: free              # upgrade to starter/standard for always-on
 
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app --workers 2 --threads 2 --timeout 120 --bind 0.0.0.0:$PORT
+    buildCommand: pip install --no-cache-dir -r requirements.txt && pip install --no-cache-dir --no-deps face-recognition==1.3.0
+    startCommand: gunicorn app:app --workers 1 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT
 
     envVars:
       # ── Required — set these in the Render dashboard (or via CLI) ──────────

@@ -176,7 +176,7 @@ def init_database():
     conn.commit()
     cur.close()
     conn.close()
-    print("✅ Database initialised successfully!")
+    print("[OK] Database initialised successfully!")
 
 
 # ─────────────────────────────────────────────────────────────────────────────

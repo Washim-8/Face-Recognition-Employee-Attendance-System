@@ -15,7 +15,7 @@ print("=" * 60)
 # 1. Import config (creates directories)
 import config
 
-print("\n✅ Directories created:")
+print("\n[OK] Directories created:")
 for d in [config.DATABASE_DIR, config.DATASET_DIR, config.MODELS_DIR, config.REPORTS_DIR]:
     print(f"   {d}")
 
@@ -23,8 +23,8 @@ for d in [config.DATABASE_DIR, config.DATASET_DIR, config.MODELS_DIR, config.REP
 from utils.db_manager import init_database
 init_database()
 
-print("\n✅ Setup complete!")
-print("\n📌 Next Steps:")
+print("\n[OK] Setup complete!")
+print("\n[INFO] Next Steps:")
 print("   1. Install dependencies:  pip install -r requirements.txt")
 print("   2. Start the app:         python app.py")
 print("   3. Open browser:          http://127.0.0.1:5000")

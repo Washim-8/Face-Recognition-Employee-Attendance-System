@@ -1,4 +1,60 @@
-import face_recognition
+try:
+    import face_recognition
+except ImportError:
+    import dlib
+    import face_recognition_models
+
+    class _FaceRecognitionFallback:
+        """Lightweight drop-in replacement when face_recognition is not installed directly."""
+        def __init__(self):
+            self._detector = dlib.get_frontal_face_detector()
+            self._predictor_68 = dlib.shape_predictor(
+                face_recognition_models.pose_predictor_model_location()
+            )
+            self._predictor_5 = dlib.shape_predictor(
+                face_recognition_models.pose_predictor_five_point_model_location()
+            )
+            self._encoder = dlib.face_recognition_model_v1(
+                face_recognition_models.face_recognition_model_location()
+            )
+
+        def _css_to_rect(self, css):
+            return dlib.rectangle(int(css[3]), int(css[0]), int(css[1]), int(css[2]))
+
+        def _rect_to_css(self, rect):
+            return rect.top(), rect.right(), rect.bottom(), rect.left()
+
+        def face_locations(self, img, number_of_times_to_upsample=1, model='hog'):
+            rects = self._detector(img, number_of_times_to_upsample)
+            return [self._rect_to_css(r) for r in rects]
+
+        def face_encodings(self, face_image, known_face_locations=None, num_jitters=1, model='small'):
+            if known_face_locations is None:
+                locations = self.face_locations(face_image)
+            else:
+                locations = known_face_locations
+
+            rects = [self._css_to_rect(loc) for loc in locations]
+            predictor = self._predictor_68 if model == 'large' else self._predictor_5
+            raw_landmarks = [predictor(face_image, r) for r in rects]
+            return [np.array(self._encoder.compute_face_descriptor(face_image, l, num_jitters)) for l in raw_landmarks]
+
+        def face_distance(self, face_encodings, face_to_compare):
+            if len(face_encodings) == 0:
+                return np.empty((0))
+            return np.linalg.norm(np.array(face_encodings) - np.array(face_to_compare), axis=1)
+
+        def compare_faces(self, known_face_encodings, face_encoding_to_check, tolerance=0.6):
+            return list(self.face_distance(known_face_encodings, face_encoding_to_check) <= tolerance)
+
+        def load_image_file(self, file, mode='RGB'):
+            im = cv2.imread(file)
+            if im is None:
+                raise ValueError(f"Could not load image: {file}")
+            return cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+
+    face_recognition = _FaceRecognitionFallback()
+
 import numpy as np
 import pickle
 import json

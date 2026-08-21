@@ -170,13 +170,12 @@ cd face-recognition-attendance
 
 ### Step 2: Install Dependencies
 ```bash
-pip install flask opencv-python face-recognition numpy pandas scikit-learn Pillow
+pip install -r requirements.txt
+pip install --no-deps face-recognition==1.3.0
 ```
 
-**For Windows users (dlib fix):**
-```bash
-pip install "dlib @ https://github.com/z-mahmud22/Dlib_Windows_Python3.x/raw/main/dlib-19.24.99-cp312-cp312-win_amd64.whl"
-```
+> **Note for Cloud (Render/Railway):** Uses precompiled wheels (`dlib-bin`) so it builds in seconds without requiring CMake/C++ compilation or >8GB build memory.
+
 
 ### Step 3: Initialize Database
 ```bash

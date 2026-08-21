@@ -59,7 +59,7 @@ def reload_face_encodings():
     face_cache['ids'] = ids
     face_cache['names'] = names
     face_cache['last_loaded'] = datetime.now()
-    print(f"✅ Loaded {len(ids)} face encodings into memory.")
+    print(f"[OK] Loaded {len(ids)} face encodings into memory.")
 
 
 # Load on startup
