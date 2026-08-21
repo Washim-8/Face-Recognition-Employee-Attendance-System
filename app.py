@@ -41,7 +41,10 @@ app = Flask(__name__)
 app.secret_key = config.SECRET_KEY
 
 # Initialize DB on startup
-init_database()
+try:
+    init_database()
+except Exception as e:
+    print(f"[WARN] Database initialization error on startup: {e}")
 
 # Global face recognition cache
 face_cache = {
@@ -54,12 +57,15 @@ face_cache = {
 
 def reload_face_encodings():
     """Reload face encodings from database into memory cache."""
-    encodings, ids, names = load_known_encodings()
-    face_cache['encodings'] = encodings
-    face_cache['ids'] = ids
-    face_cache['names'] = names
-    face_cache['last_loaded'] = datetime.now()
-    print(f"[OK] Loaded {len(ids)} face encodings into memory.")
+    try:
+        encodings, ids, names = load_known_encodings()
+        face_cache['encodings'] = encodings
+        face_cache['ids'] = ids
+        face_cache['names'] = names
+        face_cache['last_loaded'] = datetime.now()
+        print(f"[OK] Loaded {len(ids)} face encodings into memory.")
+    except Exception as e:
+        print(f"[WARN] Could not load face encodings on startup: {e}")
 
 
 # Load on startup

@@ -32,9 +32,23 @@ if config.USE_POSTGRES:
 def get_db_connection():
     """Return an open DB connection (psycopg2 or sqlite3)."""
     if config.USE_POSTGRES:
-        conn = psycopg2.connect(config.DATABASE_URL)
-        conn.autocommit = False
-        return conn
+        try:
+            db_url = config.DATABASE_URL
+            if 'sslmode=' not in db_url and 'localhost' not in db_url and '127.0.0.1' not in db_url:
+                separator = '&' if '?' in db_url else '?'
+                db_url += f"{separator}sslmode=require"
+            conn = psycopg2.connect(db_url)
+            conn.autocommit = False
+            return conn
+        except Exception as e:
+            print(f"[WARN] PostgreSQL connection failed ({e}). Falling back to local SQLite.")
+            config.USE_POSTGRES = False
+            os.makedirs(config.DATABASE_DIR, exist_ok=True)
+            conn = sqlite3.connect(config.DATABASE_PATH)
+            conn.row_factory = sqlite3.Row
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA foreign_keys=ON")
+            return conn
     else:
         os.makedirs(config.DATABASE_DIR, exist_ok=True)
         conn = sqlite3.connect(config.DATABASE_PATH)
@@ -46,7 +60,7 @@ def get_db_connection():
 
 def _cursor(conn):
     """Return a dict-like cursor regardless of driver."""
-    if config.USE_POSTGRES:
+    if not isinstance(conn, sqlite3.Connection) and config.USE_POSTGRES:
         return conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     return conn.cursor()
 
