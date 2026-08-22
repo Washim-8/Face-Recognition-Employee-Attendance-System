@@ -86,8 +86,19 @@ def login_required(f):
 
 
 # ============================================================
-# Main Routes
+# Main Routes & Health Check
 # ============================================================
+@app.route('/health')
+@app.route('/healthz')
+def health_check():
+    """Health check endpoint for Render and PaaS monitoring."""
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': datetime.now().isoformat(),
+        'database': 'postgresql' if config.USE_POSTGRES else 'sqlite'
+    }), 200
+
+
 @app.route('/')
 def index():
     """Landing page — face recognition attendance terminal."""

@@ -41,6 +41,8 @@ def get_db_connection():
             conn.autocommit = False
             return conn
         except Exception as e:
+            if 'supabase.co' in config.DATABASE_URL and 'pooler.supabase.com' not in config.DATABASE_URL:
+                print("[TIP] Supabase direct host (db.*.supabase.co) is IPv6-only. For Render and other IPv4 cloud platforms, use the Supabase Connection Pooler URI (aws-0-*.pooler.supabase.com:6543 or 5432).")
             print(f"[WARN] PostgreSQL connection failed ({e}). Falling back to local SQLite.")
             config.USE_POSTGRES = False
             os.makedirs(config.DATABASE_DIR, exist_ok=True)
@@ -93,7 +95,7 @@ def init_database():
     conn = get_db_connection()
     cur  = _cursor(conn)
 
-    if config.USE_POSTGRES:
+    if not isinstance(conn, sqlite3.Connection) and config.USE_POSTGRES:
         # ── PostgreSQL DDL ─────────────────────────────────────────────────
         cur.execute("""
             CREATE TABLE IF NOT EXISTS employees (
