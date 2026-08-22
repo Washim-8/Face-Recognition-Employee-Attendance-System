@@ -160,7 +160,7 @@
                             'Slightly tilt head left, right, up, down',
                             'Avoid sunglasses or face coverings',
                             'Multiple angles improve accuracy',
-                            'Minimum 20 images recommended'
+                            '10 images are captured in ~2 seconds'
                             ] %}
                             <li
                                 style="font-size:0.85rem;color:var(--text-secondary);display:flex;align-items:flex-start;gap:8px;">
@@ -245,32 +245,36 @@
             if (capturedCount >= REQUIRED_IMAGES) {
                 stopCapture();
                 const finalStatus = document.getElementById('captureStatus');
-                finalStatus.innerHTML = `<i data-lucide="check-circle" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;"></i> ${capturedCount} images captured! ready to train.`;
+                finalStatus.innerHTML = `<i data-lucide="check-circle" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;"></i> ${capturedCount} images captured! Click Train Model.`;
                 finalStatus.className = 'recognition-status success';
                 enableTrainButton();
                 if (window.lucide) lucide.createIcons();
                 return;
             }
 
-            const frameData = webcam.captureFrame(0.85);
+            const frameData = webcam.captureFrame(0.75);
             if (!frameData) return;
 
-            const res = await fetch('/api/capture-frame', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    employee_id: EMPLOYEE_ID,
-                    frame: frameData,
-                    frame_index: capturedCount + 1
-                })
-            });
+            try {
+                const res = await fetch('/api/capture-frame', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        employee_id: EMPLOYEE_ID,
+                        frame: frameData,
+                        frame_index: capturedCount + 1
+                    })
+                });
 
-            const data = await res.json();
-            if (data.success) {
-                capturedCount = data.captured_count;
-                updateProgress(capturedCount);
+                const data = await res.json();
+                if (data.success) {
+                    capturedCount = data.captured_count;
+                    updateProgress(capturedCount);
+                }
+            } catch (err) {
+                console.error("Capture frame error:", err);
             }
-        }, 350); // Capture ~3 images per second
+        }, 180); // Quick capture ~5 images per second
     }
 
     function stopCapture() {
@@ -288,7 +292,7 @@
         recStatus.innerHTML = 'Capture paused.';
         recStatus.className = 'recognition-status idle';
 
-        if (capturedCount >= 5) enableTrainButton();
+        if (capturedCount >= 3) enableTrainButton();
         if (window.lucide) lucide.createIcons();
     }
 
@@ -297,13 +301,13 @@
         const pct = Math.min(100, Math.round(count / REQUIRED_IMAGES * 100));
         document.getElementById('progressBar').style.width = pct + '%';
         document.getElementById('btnTrain').innerHTML = `<i data-lucide="play-circle" style="width:18px;height:18px;"></i> Train Model (${count}/${REQUIRED_IMAGES} images)`;
+        if (count >= 3) enableTrainButton();
         if (window.lucide) lucide.createIcons();
     }
 
     function enableTrainButton() {
         const btn = document.getElementById('btnTrain');
         btn.disabled = false;
-        // removing hardcoded infinite glow, rely on active btn-success class
     }
 
     async function trainModel() {
@@ -317,7 +321,7 @@
         statusEl.style.background = '#EFF6FF';
         statusEl.style.color = '#1D4ED8';
         statusEl.style.border = '1px solid #BFDBFE';
-        statusEl.innerHTML = '<div style="display:flex;align-items:center;gap:6px;"><i data-lucide="cpu" class="lucide-spin" style="width:16px;height:16px;"></i> Analyzing face parameters and generating ML encodings... (this may take a minute)</div>';
+        statusEl.innerHTML = '<div style="display:flex;align-items:center;gap:6px;"><i data-lucide="cpu" class="lucide-spin" style="width:16px;height:16px;"></i> Generating 128-dimensional face embedding model...</div>';
 
         if (window.lucide) lucide.createIcons();
 

@@ -45,7 +45,7 @@ ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')
 FACE_RECOGNITION_TOLERANCE = float(
     os.environ.get('FACE_RECOGNITION_TOLERANCE', '0.5')
 )
-IMAGES_PER_EMPLOYEE = int(os.environ.get('IMAGES_PER_EMPLOYEE', '30'))
+IMAGES_PER_EMPLOYEE = int(os.environ.get('IMAGES_PER_EMPLOYEE', '10'))
 
 # ── Working-hours ─────────────────────────────────────────────────────────────
 WORK_START_TIME       = os.environ.get('WORK_START_TIME', '09:00')

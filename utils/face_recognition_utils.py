@@ -71,73 +71,65 @@ from utils.db_manager import get_all_face_encodings, update_face_encoding
 # Internal helpers
 # ──────────────────────────────────────────────────────────────────────────────
 
-def _hog_encode(image):
-    """Try HOG face detection (upsample=1 then 2) and return first encoding, or None."""
-    locs = face_recognition.face_locations(
-        image, number_of_times_to_upsample=1, model='hog')
-    if not locs:
-        locs = face_recognition.face_locations(
-            image, number_of_times_to_upsample=2, model='hog')
-    if locs:
+def _haar_encode(bgr_image):
+    """
+    Fast face detector using OpenCV Haar cascade (runs in ~2-4ms).
+    Passes detected face bounding box directly to dlib face_encodings,
+    bypassing the slow whole-image HOG sliding window search.
+    """
+    try:
+        gray = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2GRAY)
+        cascade = cv2.CascadeClassifier(
+            cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+
+        faces = cascade.detectMultiScale(
+            gray, scaleFactor=1.1, minNeighbors=4, minSize=(50, 50))
+
+        if len(faces) == 0:
+            faces = cascade.detectMultiScale(
+                gray, scaleFactor=1.05, minNeighbors=2, minSize=(30, 30))
+
+        if len(faces) == 0:
+            return None
+
+        # Pick largest face
+        x, y, fw, fh = max(faces, key=lambda f: f[2] * f[3])
+
+        # Add slight 8% margin for dlib facial landmark predictor
+        pad_x = int(fw * 0.08)
+        pad_y = int(fh * 0.08)
+        x1 = max(0, x - pad_x)
+        y1 = max(0, y - pad_y)
+        x2 = min(bgr_image.shape[1], x + fw + pad_x)
+        y2 = min(bgr_image.shape[0], y + fh + pad_y)
+
+        rgb = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2RGB)
+        haar_loc = (y1, x2, y2, x1)
+
         encs = face_recognition.face_encodings(
-            image, known_face_locations=locs, num_jitters=1)
+            rgb, known_face_locations=[haar_loc], num_jitters=1)
         if encs:
             return encs[0]
+    except Exception:
+        pass
     return None
 
 
-def _haar_encode(image_path):
-    """
-    Fallback: use OpenCV Haar cascade to locate the face (more lenient than dlib HOG),
-    then pass the bbox DIRECTLY to face_recognition.face_encodings() as
-    known_face_locations — completely bypassing HOG detection.
-    This works on virtually any lit frontal/slightly-angled face.
-    """
-    bgr = cv2.imread(image_path)
-    if bgr is None:
-        return None
-
-    gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
-    cascade = cv2.CascadeClassifier(
-        cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-
-    # Very permissive: scaleFactor=1.05, minNeighbors=2, small minSize
-    faces = cascade.detectMultiScale(
-        gray, scaleFactor=1.05, minNeighbors=2, minSize=(20, 20))
-
-    if len(faces) == 0:
-        # Try even more lenient
-        faces = cascade.detectMultiScale(
-            gray, scaleFactor=1.03, minNeighbors=1, minSize=(15, 15))
-
-    if len(faces) == 0:
-        return None
-
-    # Pick the largest face
-    x, y, fw, fh = max(faces, key=lambda f: f[2] * f[3])
-    x, y = max(0, x), max(0, y)
-    x2 = min(bgr.shape[1], x + fw)
-    y2 = min(bgr.shape[0], y + fh)
-
-    # Convert to face_recognition format: (top, right, bottom, left)
-    rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-    haar_loc = (y, x2, y2, x)
-
-    # Try encoding at original size with known location
-    encs = face_recognition.face_encodings(
-        rgb, known_face_locations=[haar_loc], num_jitters=1)
-    if encs:
-        return encs[0]
-
-    # Try at 2× upscale with scaled Haar location
-    rgb2 = cv2.resize(rgb, (rgb.shape[1] * 2, rgb.shape[0] * 2),
-                      interpolation=cv2.INTER_LINEAR)
-    haar_loc2 = (y * 2, x2 * 2, y2 * 2, x * 2)
-    encs2 = face_recognition.face_encodings(
-        rgb2, known_face_locations=[haar_loc2], num_jitters=1)
-    if encs2:
-        return encs2[0]
-
+def _hog_encode(rgb_image):
+    """Fallback HOG face detection (upsample=0 then 1)."""
+    try:
+        locs = face_recognition.face_locations(
+            rgb_image, number_of_times_to_upsample=0, model='hog')
+        if not locs:
+            locs = face_recognition.face_locations(
+                rgb_image, number_of_times_to_upsample=1, model='hog')
+        if locs:
+            encs = face_recognition.face_encodings(
+                rgb_image, known_face_locations=locs, num_jitters=1)
+            if encs:
+                return encs[0]
+    except Exception:
+        pass
     return None
 
 
@@ -148,76 +140,41 @@ def _haar_encode(image_path):
 def load_image_and_encode(image_path):
     """
     Load an image from disk and return its 128-d face encoding, or None.
-
-    IMPORTANT: Uses cv2.imread (not face_recognition.load_image_file) to avoid
-    a PIL bug where some JPEGs are returned as RGBA 4-channel images, causing
-    dlib to crash with "must be gray or RGB image".
-
-    Tries 4 strategies, cheapest first:
-      1. HOG on original RGB image
-      2. HOG on 2x upscaled image
-      3. HOG on 1.5x upscaled image
-      4. Haar cascade → known_face_locations (bypasses HOG entirely)
+    Fast execution: uses OpenCV Haar pre-localization (~5ms) with HOG fallback.
     """
     try:
-        # Load with OpenCV — always gives uint8 BGR, no alpha channel surprises
         bgr = cv2.imread(image_path)
         if bgr is None:
-            print(f"  [SKIP] cv2 could not read: {os.path.basename(image_path)}")
             return None
 
-        # Convert BGR → RGB (face_recognition/dlib expect RGB)
-        image = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+        h, w = bgr.shape[:2]
+        # Standardize resolution for speed
+        if max(w, h) > 800:
+            scale = 800.0 / max(w, h)
+            bgr = cv2.resize(bgr, (int(w * scale), int(h * scale)),
+                             interpolation=cv2.INTER_AREA)
 
-        # Ensure uint8 (dlib requirement)
-        if image.dtype != np.uint8:
-            image = image.astype(np.uint8)
-
-        h, w = image.shape[:2]
-
-        # Shrink very large images to prevent memory/speed issues
-        if max(w, h) > 1200:
-            scale = 1200.0 / max(w, h)
-            image = cv2.resize(image, (int(w * scale), int(h * scale)),
-                               interpolation=cv2.INTER_AREA)
-            h, w = image.shape[:2]
-
-        # Strategy 1 — HOG on original
-        enc = _hog_encode(image)
+        # 1. Fast Haar Cascade detection + dlib encoding (~20ms)
+        enc = _haar_encode(bgr)
         if enc is not None:
             return enc
 
-        # Strategy 2 — HOG on 2x upscale
-        enc = _hog_encode(cv2.resize(image, (w * 2, h * 2),
-                                     interpolation=cv2.INTER_LINEAR))
+        # 2. Fallback: HOG detection on RGB
+        rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+        enc = _hog_encode(rgb)
         if enc is not None:
             return enc
 
-        # Strategy 3 — HOG on 1.5x upscale
-        enc = _hog_encode(cv2.resize(image, (int(w * 1.5), int(h * 1.5)),
-                                     interpolation=cv2.INTER_LINEAR))
-        if enc is not None:
-            return enc
-
-        # Strategy 4 — Haar → direct known_face_locations (bypasses HOG)
-        enc = _haar_encode(image_path)
-        if enc is not None:
-            return enc
-
-        print(f"  [FAIL] All 4 strategies failed: {os.path.basename(image_path)}")
         return None
-
     except Exception as e:
         print(f"  [ERR] {os.path.basename(image_path)}: {e}")
         return None
 
 
-
-
 def encode_employee_from_dataset(employee_id):
     """
     Generate and store averaged face encoding for an employee
-    from all captured dataset images.
+    from captured dataset images with fast processing and early convergence.
     """
     emp_dir = os.path.join(config.DATASET_DIR, employee_id)
     if not os.path.exists(emp_dir):
@@ -229,18 +186,18 @@ def encode_employee_from_dataset(employee_id):
     if not image_files:
         return False, "No images found in dataset."
 
-    print(f"[TRAIN] Processing {len(image_files)} images for employee '{employee_id}'...")
+    print(f"[TRAIN] Processing images for employee '{employee_id}'...")
 
     all_encodings = []
-    failed = 0
+    # 8 high-quality encodings are optimal for mean vector convergence
+    target_encodings = min(len(image_files), 8)
+
     for img_file in image_files:
         enc = load_image_and_encode(os.path.join(emp_dir, img_file))
         if enc is not None:
             all_encodings.append(enc)
-        else:
-            failed += 1
-
-    print(f"   OK: {len(all_encodings)} encoded | FAIL: {failed} failed")
+            if len(all_encodings) >= target_encodings:
+                break  # Sufficient encodings collected, stop early for instant response
 
     if not all_encodings:
         return False, (
@@ -252,8 +209,8 @@ def encode_employee_from_dataset(employee_id):
     encoding_str = json.dumps(avg_encoding.tolist())
 
     if update_face_encoding(employee_id, encoding_str):
-        print(f"[OK] Encoding stored for '{employee_id}' ({len(all_encodings)}/{len(image_files)} images used)")
-        return True, f"Face model trained with {len(all_encodings)}/{len(image_files)} images!"
+        print(f"[OK] Encoding stored for '{employee_id}' ({len(all_encodings)} images used)")
+        return True, f"Face model trained successfully with {len(all_encodings)} images!"
     else:
         return False, "Failed to save encoding to database."
 

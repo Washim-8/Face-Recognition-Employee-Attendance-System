@@ -41,4 +41,4 @@ services:
         value: "0.5"
 
       - key: IMAGES_PER_EMPLOYEE
-        value: "30"
+        value: "10"

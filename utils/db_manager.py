@@ -14,6 +14,7 @@ Key differences handled transparently:
 
 import os
 import sys
+import json
 import sqlite3
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -190,9 +191,104 @@ def init_database():
         )
 
     conn.commit()
+
+    # Automatically seed employees & attendance from seed_data.json if tables are empty
+    is_postgres = not isinstance(conn, sqlite3.Connection) and config.USE_POSTGRES
+    seed_initial_data_if_empty(conn, cur, is_postgres)
+
     cur.close()
     conn.close()
     print("[OK] Database initialised successfully!")
+
+
+def seed_initial_data_if_empty(conn, cur, is_postgres):
+    """Seed initial employees and attendance records from database/seed_data.json if database is empty."""
+    seed_path = os.path.join(config.DATABASE_DIR, 'seed_data.json')
+    if not os.path.exists(seed_path):
+        return
+
+    try:
+        cur.execute("SELECT COUNT(*) AS total FROM employees")
+        res = _one(cur)
+        count = (res.get('total') if isinstance(res, dict) else res[0]) if res else 0
+        if count and count > 0:
+            return  # Data already exists
+
+        with open(seed_path, 'r', encoding='utf-8') as f:
+            seed = json.load(f)
+
+        employees = seed.get('employees', [])
+        attendance = seed.get('attendance', [])
+
+        ph = '%s' if is_postgres else '?'
+
+        # Insert employees
+        for emp in employees:
+            if is_postgres:
+                cur.execute("""
+                    INSERT INTO employees (employee_id, name, department, email, phone, position, join_date, face_encoding, profile_image, is_active)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (employee_id) DO NOTHING
+                """, (
+                    emp.get('employee_id'), emp.get('name'), emp.get('department'),
+                    emp.get('email'), emp.get('phone'), emp.get('position'),
+                    emp.get('join_date'), emp.get('face_encoding'), emp.get('profile_image'),
+                    emp.get('is_active', 1)
+                ))
+            else:
+                cur.execute("""
+                    INSERT OR IGNORE INTO employees (employee_id, name, department, email, phone, position, join_date, face_encoding, profile_image, is_active)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    emp.get('employee_id'), emp.get('name'), emp.get('department'),
+                    emp.get('email'), emp.get('phone'), emp.get('position'),
+                    emp.get('join_date'), emp.get('face_encoding'), emp.get('profile_image'),
+                    emp.get('is_active', 1)
+                ))
+
+        # Insert attendance
+        for att in attendance:
+            cur.execute(f"""
+                INSERT INTO attendance (employee_id, name, login_time, logout_time, date, working_hours, status, late_arrival)
+                VALUES ({', '.join([ph]*8)})
+            """, (
+                att.get('employee_id'), att.get('name'), att.get('login_time'),
+                att.get('logout_time'), att.get('date'), att.get('working_hours', 0.0),
+                att.get('status', 'Present'), att.get('late_arrival', 0)
+            ))
+
+        conn.commit()
+        print(f"[OK] Seeded {len(employees)} employees and {len(attendance)} attendance records from seed_data.json!")
+    except Exception as e:
+        print(f"[WARN] Error seeding database: {e}")
+
+
+def export_database_to_seed_json():
+    """Export current employees, attendance records, and admins from active DB to database/seed_data.json."""
+    try:
+        conn = get_db_connection()
+        cur = _cursor(conn)
+        cur.execute("SELECT employee_id, name, department, email, phone, position, join_date, face_encoding, profile_image, is_active FROM employees")
+        employees = _all(cur)
+        cur.execute("SELECT employee_id, name, login_time, logout_time, date, working_hours, status, late_arrival FROM attendance")
+        attendance = _all(cur)
+        cur.execute("SELECT username, password, email FROM admin")
+        admins = _all(cur)
+        cur.close()
+        conn.close()
+
+        seed_path = os.path.join(config.DATABASE_DIR, 'seed_data.json')
+        with open(seed_path, 'w', encoding='utf-8') as f:
+            json.dump({
+                'employees': employees,
+                'attendance': attendance,
+                'admins': admins
+            }, f, indent=2)
+        print(f"[OK] Exported {len(employees)} employees and {len(attendance)} records to {seed_path}")
+        return True
+    except Exception as e:
+        print(f"[WARN] Could not export seed data: {e}")
+        return False
 
 
 # ─────────────────────────────────────────────────────────────────────────────
